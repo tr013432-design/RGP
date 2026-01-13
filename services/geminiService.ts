@@ -2,16 +2,25 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
+// Função auxiliar para tentar pegar o modelo, com fallback (plano B)
+const getGenerativeModel = (genAI: GoogleGenerativeAI) => {
+  try {
+    // TENTATIVA 1: O modelo específico e exato (versão 001)
+    return genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+  } catch (e) {
+    console.warn("Flash falhou, tentando Gemini Pro...");
+    // TENTATIVA 2: O modelo clássico (mais estável)
+    return genAI.getGenerativeModel({ model: "gemini-pro" });
+  }
+};
+
 const getModel = () => {
   if (!apiKey) {
     console.error("ERRO: API Key ausente. Verifique o .env na Vercel.");
     throw new Error("API Key ausente");
   }
   const genAI = new GoogleGenerativeAI(apiKey);
-  
-  // CORREÇÃO APLICADA:
-  // Usando o sufixo "-latest". Isso ajuda quando a API não reconhece o nome curto.
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+  return getGenerativeModel(genAI);
 };
 
 export const generateCopyStrategy = async (prompt: string) => {
@@ -21,7 +30,7 @@ export const generateCopyStrategy = async (prompt: string) => {
     return result.response.text();
   } catch (error) {
     console.error("Erro Dante:", error);
-    return "Erro ao gerar copy. Verifique conexão.";
+    return "Erro ao gerar copy. (Dante)";
   }
 };
 
@@ -32,20 +41,18 @@ export const handleSalesObjection = async (objection: string) => {
     return result.response.text();
   } catch (error) {
     console.error("Erro Brenner:", error);
-    return "Erro ao gerar script.";
+    return "Erro ao gerar script. (Brenner)";
   }
 };
 
 export const analyzeFinanceData = async (data: string) => {
   try {
     const model = getModel();
-    // Dica: Para a Sofia, se precisar de análise de planilhas complexas no futuro,
-    // podemos criar um getModel específico usando 'gemini-1.5-pro-latest'.
     const result = await model.generateContent(`Atue como Sofia (Financeiro). Analise: ${data}`);
     return result.response.text();
   } catch (error) {
     console.error("Erro Sofia:", error);
-    return "Erro na análise.";
+    return "Erro na análise. (Sofia)";
   }
 };
 
@@ -61,6 +68,7 @@ export const generateCreativeIdeas = async (clientName: string, niche: string) =
     return result.response.text();
   } catch (error) {
     console.error("Erro Rubens Detalhado:", error);
-    throw error;
+    // Se der erro aqui, vamos tentar um erro mais legível
+    throw new Error("Falha na conexão com a IA (Rubens). Tente novamente.");
   }
 };
