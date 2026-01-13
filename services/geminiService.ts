@@ -10,9 +10,8 @@ const getModel = () => {
   const genAI = new GoogleGenerativeAI(apiKey);
   
   // CORREÇÃO APLICADA:
-  // Trocamos 'gemini-pro' (descontinuado/instável) por 'gemini-1.5-flash'.
-  // O Flash é mais rápido e ideal para gerar respostas curtas (Rubens/Brenner).
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Usando o sufixo "-latest". Isso ajuda quando a API não reconhece o nome curto.
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 };
 
 export const generateCopyStrategy = async (prompt: string) => {
@@ -41,7 +40,7 @@ export const analyzeFinanceData = async (data: string) => {
   try {
     const model = getModel();
     // Dica: Para a Sofia, se precisar de análise de planilhas complexas no futuro,
-    // podemos criar um getModel específico usando 'gemini-1.5-pro'.
+    // podemos criar um getModel específico usando 'gemini-1.5-pro-latest'.
     const result = await model.generateContent(`Atue como Sofia (Financeiro). Analise: ${data}`);
     return result.response.text();
   } catch (error) {
