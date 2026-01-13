@@ -1,15 +1,12 @@
-// --- ÁREA DE PERIGO: HARDCODE TEMPORÁRIO ---
-// Cole sua chave nova (que começa com AIza) entre as aspas abaixo.
-const apiKey = "AIzaSyD8JX8cgAJ1GfgxbFZKrvUYwMcJa-Ot4JU"; 
-// -------------------------------------------
+// --- CÓDIGO DE CONEXÃO DIRETA SIMPLIFICADO ---
+
+// 1. Cole sua chave aqui dentro das aspas (Mantenha a que você gerou)
+const apiKey = "AIzaSyD8JX8cgAJ1GfgXbFZKrvUYWMcJa-Ot4JU"; 
 
 const callGeminiDirect = async (prompt: string, role: string) => {
-  if (!apiKey || apiKey === "AIzaSyD8JX8cgAJ1GfgxbFZKrvUYwMcJa-Ot4JU") {
-    console.error("ERRO: Você esqueceu de colar a chave nova no código!");
-    return "Erro: Chave não inserida no código.";
-  }
-
-  // Vamos usar o modelo Flash 1.5 que é o padrão atual
+  // Removi a verificação que estava travando o código
+  
+  // Vamos usar o modelo Flash 1.5
   const model = "gemini-1.5-flash"; 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -33,9 +30,7 @@ const callGeminiDirect = async (prompt: string, role: string) => {
     if (!response.ok) {
       const errorData = await response.json();
       console.error("ERRO DO GOOGLE:", errorData);
-      
-      // Se der erro 404 aqui com a chave certa, é problema de permissão no Google
-      return `Erro API Google: ${errorData.error?.message || response.status}`;
+      return `Erro API Google: ${response.status} - Verifique se a chave foi criada no Google AI Studio.`;
     }
 
     const data = await response.json();
@@ -43,7 +38,7 @@ const callGeminiDirect = async (prompt: string, role: string) => {
 
   } catch (error) {
     console.error("Erro na chamada:", error);
-    return "Erro de conexão. Verifique o console.";
+    return "Erro de conexão.";
   }
 };
 
