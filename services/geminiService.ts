@@ -9,9 +9,10 @@ const getModel = () => {
   }
   const genAI = new GoogleGenerativeAI(apiKey);
   
-  // MUDANÇA ESTRATÉGICA: Usando 'gemini-pro' para teste de conexão.
-  // Se funcionar, o problema era apenas a versão da biblioteca.
-  return genAI.getGenerativeModel({ model: "gemini-pro" });
+  // CORREÇÃO APLICADA:
+  // Trocamos 'gemini-pro' (descontinuado/instável) por 'gemini-1.5-flash'.
+  // O Flash é mais rápido e ideal para gerar respostas curtas (Rubens/Brenner).
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 };
 
 export const generateCopyStrategy = async (prompt: string) => {
@@ -39,6 +40,8 @@ export const handleSalesObjection = async (objection: string) => {
 export const analyzeFinanceData = async (data: string) => {
   try {
     const model = getModel();
+    // Dica: Para a Sofia, se precisar de análise de planilhas complexas no futuro,
+    // podemos criar um getModel específico usando 'gemini-1.5-pro'.
     const result = await model.generateContent(`Atue como Sofia (Financeiro). Analise: ${data}`);
     return result.response.text();
   } catch (error) {
@@ -50,7 +53,7 @@ export const analyzeFinanceData = async (data: string) => {
 export const generateCreativeIdeas = async (clientName: string, niche: string) => {
   try {
     const model = getModel();
-    // Prompt simplificado para garantir resposta rápida
+    // Prompt do Rubens
     const result = await model.generateContent(`
       Atue como Rubens (Criativo).
       Cliente: ${clientName} | Nicho: ${niche}.
