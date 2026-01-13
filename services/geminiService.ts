@@ -1,78 +1,81 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Tenta pegar a chave com prefixo VITE_ (obrigatório no Vite/Vercel)
+// Tenta pegar a chave. Se não achar, usa string vazia para não quebrar o build,
+// mas vai dar erro no console se tentar usar.
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-const getAI = () => {
+const getModel = () => {
   if (!apiKey) {
-    console.error("ERRO CRÍTICO: Chave de API não encontrada! Verifique o .env ou a Vercel.");
+    console.error("ERRO: Chave de API não encontrada. Verifique as Variáveis de Ambiente na Vercel.");
     throw new Error("API Key ausente");
   }
-  return new GoogleGenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  // O modelo 'gemini-1.5-flash' é o mais estável para essa biblioteca
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 };
 
 // --- Módulo Dante (Copy) ---
 export const generateCopyStrategy = async (prompt: string) => {
   try {
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash', // Mudei para 1.5 (Estável)
-      contents: `Atue como Dante, Copywriter Senior da RGP. Crie uma estrutura de copy para: "${prompt}". Use Markdown.`,
-      config: { temperature: 0.8 }
-    });
-    return response.text();
+    const model = getModel();
+    const result = await model.generateContent(`
+      Atue como Dante, Copywriter Senior da RGP.
+      Contexto: A agência preza por copy agressiva e baseada em dados.
+      Tarefa: Crie uma estrutura de persuasão para: "${prompt}".
+      Formato: Use Markdown, separe por tópicos.
+    `);
+    return result.response.text();
   } catch (error) {
     console.error("Erro Dante:", error);
-    throw error;
+    return "Erro ao gerar copy. Verifique a chave de API.";
   }
 };
 
 // --- Módulo Brenner (Vendas) ---
 export const handleSalesObjection = async (objection: string) => {
   try {
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash', // Mudei para 1.5 (Estável)
-      contents: `Atue como Brenner. O lead disse: "${objection}". Dê 3 respostas curtas para quebrar essa objeção.`,
-      config: { temperature: 0.7 }
-    });
-    return response.text();
+    const model = getModel();
+    const result = await model.generateContent(`
+      Atue como Brenner, especialista em negociação.
+      Objeção do cliente: "${objection}".
+      Dê 3 respostas curtas para quebrar essa objeção.
+    `);
+    return result.response.text();
   } catch (error) {
     console.error("Erro Brenner:", error);
-    throw error;
+    return "Erro ao gerar script.";
   }
 };
 
 // --- Módulo Sofia (Financeiro) ---
 export const analyzeFinanceData = async (data: string) => {
   try {
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash', // Mudei para 1.5 (Estável)
-      contents: `Atue como Sofia. Analise estes dados financeiros e dê insights: ${data}`,
-      config: { temperature: 0.3 }
-    });
-    return response.text();
+    const model = getModel();
+    const result = await model.generateContent(`
+      Atue como Sofia, analista financeira.
+      Analise estes dados e dê insights curtos: ${data}
+    `);
+    return result.response.text();
   } catch (error) {
     console.error("Erro Sofia:", error);
-    throw error;
+    return "Erro na análise.";
   }
 };
 
 // --- Módulo Rubens (Criativos) ---
 export const generateCreativeIdeas = async (clientName: string, niche: string) => {
   try {
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash', // Mudei para 1.5 (Estável)
-      contents: `Atue como Rubens, Diretor de Criação.
+    const model = getModel();
+    const prompt = `
+      Atue como Rubens, Diretor de Criação.
       Cliente: ${clientName} | Nicho: ${niche}
-      Gere 3 ideias de criativos virais (Reels/TikTok) com Headline e Descrição Visual.`,
-      config: { temperature: 0.9 }
-    });
-    return response.text();
+      Gere 3 ideias de criativos virais (Reels/TikTok) com Headline e Descrição.
+    `;
+    
+    const result = await model.generateContent(prompt);
+    return result.response.text();
   } catch (error) {
-    console.error("Erro Rubens Detalhado:", error); 
-    throw error; // Lança o erro para o console do navegador
+    console.error("Erro Rubens:", error);
+    throw error;
   }
 };
