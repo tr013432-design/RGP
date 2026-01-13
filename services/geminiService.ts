@@ -1,65 +1,44 @@
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-// Função Manual de Conexão (Sem usar biblioteca)
 const callGeminiDirect = async (prompt: string, role: string) => {
-  if (!apiKey) {
-    console.error("ERRO: API Key ausente.");
-    return "Erro: Chave de API não configurada.";
-  }
+  if (!apiKey) return "Erro: API Key não configurada.";
 
-  // URL direta da API do Google (bypassando a biblioteca)
-  // Usando o modelo gemini-1.5-flash
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Vamos tentar 3 modelos em ordem: Flash (Rápido) -> Pro 1.5 (Forte) -> Pro 1.0 (Antigo/Estável)
+  const models = [
+    "gemini-1.5-flash",
+    "gemini-1.5-pro", 
+    "gemini-pro"
+  ];
 
-  const payload = {
-    contents: [{
-      parts: [{
-        text: `Atue como ${role}. ${prompt}`
-      }]
-    }]
-  };
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Atue como ${role}. ${prompt}` }] }]
+        })
+      });
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      // Se der erro, vamos ver o detalhe real no console
-      const errorData = await response.json();
-      console.error("ERRO DETALHADO DO GOOGLE:", errorData);
-      throw new Error(`Erro API: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        // Se falhar, apenas loga e tenta o próximo
+        console.warn(`Falha no modelo ${model}: ${response.status}`);
+      }
+    } catch (e) {
+      console.error(`Erro de conexão com ${model}`, e);
     }
-
-    const data = await response.json();
-    // Extraindo o texto da resposta complexa do Google
-    return data.candidates[0].content.parts[0].text;
-
-  } catch (error) {
-    console.error("Erro na chamada manual:", error);
-    return "Erro de conexão com a IA. Verifique o console (F12) para detalhes.";
   }
+
+  return "Erro Fatal: Nenhum modelo funcionou. Verifique se sua API Key foi criada em 'aistudio.google.com' num projeto NOVO.";
 };
 
-// --- Funções Exportadas (Mantendo os mesmos nomes para não quebrar o resto do site) ---
-
-export const generateCopyStrategy = async (prompt: string) => {
-  return await callGeminiDirect(`Crie uma copy para: "${prompt}"`, "Dante (Copywriter)");
-};
-
-export const handleSalesObjection = async (objection: string) => {
-  return await callGeminiDirect(`Quebre a objeção: "${objection}"`, "Brenner (Vendas)");
-};
-
-export const analyzeFinanceData = async (data: string) => {
-  return await callGeminiDirect(`Analise estes dados: ${data}`, "Sofia (Financeiro)");
-};
-
-export const generateCreativeIdeas = async (clientName: string, niche: string) => {
-  const prompt = `Cliente: ${clientName} | Nicho: ${niche}. Gere 3 ideias curtas de Reels/TikTok.`;
-  return await callGeminiDirect(prompt, "Rubens (Criativo)");
-};
+// --- Exportações ---
+export const generateCopyStrategy = async (prompt: string) => callGeminiDirect(`Copy para: "${prompt}"`, "Dante");
+export const handleSalesObjection = async (objection: string) => callGeminiDirect(`Quebre a objeção: "${objection}"`, "Brenner");
+export const analyzeFinanceData = async (data: string) => callGeminiDirect(`Analise: ${data}`, "Sofia");
+export const generateCreativeIdeas = async (clientName: string, niche: string) => callGeminiDirect(`3 ideias de Reels para ${clientName} (${niche})`, "Rubens");
