@@ -1,45 +1,34 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Tenta pegar a chave. Se não achar, usa string vazia para não quebrar o build,
-// mas vai dar erro no console se tentar usar.
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 const getModel = () => {
   if (!apiKey) {
-    console.error("ERRO: Chave de API não encontrada. Verifique as Variáveis de Ambiente na Vercel.");
+    console.error("ERRO: API Key ausente. Verifique o .env na Vercel.");
     throw new Error("API Key ausente");
   }
   const genAI = new GoogleGenerativeAI(apiKey);
-  // O modelo 'gemini-1.5-flash' é o mais estável para essa biblioteca
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  
+  // MUDANÇA ESTRATÉGICA: Usando 'gemini-pro' para teste de conexão.
+  // Se funcionar, o problema era apenas a versão da biblioteca.
+  return genAI.getGenerativeModel({ model: "gemini-pro" });
 };
 
-// --- Módulo Dante (Copy) ---
 export const generateCopyStrategy = async (prompt: string) => {
   try {
     const model = getModel();
-    const result = await model.generateContent(`
-      Atue como Dante, Copywriter Senior da RGP.
-      Contexto: A agência preza por copy agressiva e baseada em dados.
-      Tarefa: Crie uma estrutura de persuasão para: "${prompt}".
-      Formato: Use Markdown, separe por tópicos.
-    `);
+    const result = await model.generateContent(`Atue como Dante (Copywriter). Crie uma copy para: "${prompt}"`);
     return result.response.text();
   } catch (error) {
     console.error("Erro Dante:", error);
-    return "Erro ao gerar copy. Verifique a chave de API.";
+    return "Erro ao gerar copy. Verifique conexão.";
   }
 };
 
-// --- Módulo Brenner (Vendas) ---
 export const handleSalesObjection = async (objection: string) => {
   try {
     const model = getModel();
-    const result = await model.generateContent(`
-      Atue como Brenner, especialista em negociação.
-      Objeção do cliente: "${objection}".
-      Dê 3 respostas curtas para quebrar essa objeção.
-    `);
+    const result = await model.generateContent(`Atue como Brenner (Vendas). Quebre a objeção: "${objection}"`);
     return result.response.text();
   } catch (error) {
     console.error("Erro Brenner:", error);
@@ -47,14 +36,10 @@ export const handleSalesObjection = async (objection: string) => {
   }
 };
 
-// --- Módulo Sofia (Financeiro) ---
 export const analyzeFinanceData = async (data: string) => {
   try {
     const model = getModel();
-    const result = await model.generateContent(`
-      Atue como Sofia, analista financeira.
-      Analise estes dados e dê insights curtos: ${data}
-    `);
+    const result = await model.generateContent(`Atue como Sofia (Financeiro). Analise: ${data}`);
     return result.response.text();
   } catch (error) {
     console.error("Erro Sofia:", error);
@@ -62,20 +47,18 @@ export const analyzeFinanceData = async (data: string) => {
   }
 };
 
-// --- Módulo Rubens (Criativos) ---
 export const generateCreativeIdeas = async (clientName: string, niche: string) => {
   try {
     const model = getModel();
-    const prompt = `
-      Atue como Rubens, Diretor de Criação.
-      Cliente: ${clientName} | Nicho: ${niche}
-      Gere 3 ideias de criativos virais (Reels/TikTok) com Headline e Descrição.
-    `;
-    
-    const result = await model.generateContent(prompt);
+    // Prompt simplificado para garantir resposta rápida
+    const result = await model.generateContent(`
+      Atue como Rubens (Criativo).
+      Cliente: ${clientName} | Nicho: ${niche}.
+      Gere 3 ideias curtas de Reels/TikTok.
+    `);
     return result.response.text();
   } catch (error) {
-    console.error("Erro Rubens:", error);
+    console.error("Erro Rubens Detalhado:", error);
     throw error;
   }
 };
