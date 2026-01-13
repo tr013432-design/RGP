@@ -1,12 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Pega a chave configurada no vite.config.ts / .env.local
-// Nota: O Vite expõe variáveis via import.meta.env, mas sua config mapeou para process.env
-const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+// CORREÇÃO CRÍTICA: O Vite precisa do import.meta.env e do prefixo VITE_
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 const getAI = () => {
   if (!apiKey) {
-    console.error("ALERTA: API Key do Gemini não encontrada. Verifique o .env.local");
+    console.error("ALERTA CRÍTICO: API Key não detectada. Verifique se a variável VITE_GEMINI_API_KEY está configurada na Vercel.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -16,7 +15,7 @@ export const generateCopyStrategy = async (prompt: string) => {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash', // Modelo mais rápido e atual
+      model: 'gemini-2.0-flash', 
       contents: `Atue como Dante, Copywriter Senior da Rodrigues Growth Partners. 
       Contexto: A agência preza por copy agressiva e baseada em dados.
       Tarefa: Crie uma estrutura de persuasão para o seguinte pedido: "${prompt}".
@@ -26,7 +25,7 @@ export const generateCopyStrategy = async (prompt: string) => {
     return response.text();
   } catch (error) {
     console.error("Erro Dante AI:", error);
-    return "O Dante está offline no momento. Verifique sua conexão ou a chave API.";
+    return "Erro ao conectar com Dante. Verifique o Console (F12) para detalhes.";
   }
 };
 
@@ -70,7 +69,7 @@ export const analyzeFinanceData = async (data: string) => {
   }
 };
 
-// --- Módulo Rubens (Criativos) - NOVO! ---
+// --- Módulo Rubens (Criativos) ---
 export const generateCreativeIdeas = async (clientName: string, niche: string) => {
   try {
     const ai = getAI();
@@ -88,7 +87,8 @@ export const generateCreativeIdeas = async (clientName: string, niche: string) =
     });
     return response.text();
   } catch (error) {
-    console.error("Erro Rubens AI:", error);
-    return "Erro ao gerar ideias criativas.";
+    console.error("Erro Detalhado Rubens AI:", error);
+    // Isso vai ajudar a gente a saber se é erro de CHAVE ou erro de REDE
+    throw error; 
   }
 };
