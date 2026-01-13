@@ -1,74 +1,65 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-// Função auxiliar para tentar pegar o modelo, com fallback (plano B)
-const getGenerativeModel = (genAI: GoogleGenerativeAI) => {
+// Função Manual de Conexão (Sem usar biblioteca)
+const callGeminiDirect = async (prompt: string, role: string) => {
+  if (!apiKey) {
+    console.error("ERRO: API Key ausente.");
+    return "Erro: Chave de API não configurada.";
+  }
+
+  // URL direta da API do Google (bypassando a biblioteca)
+  // Usando o modelo gemini-1.5-flash
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+  const payload = {
+    contents: [{
+      parts: [{
+        text: `Atue como ${role}. ${prompt}`
+      }]
+    }]
+  };
+
   try {
-    // TENTATIVA 1: O modelo específico e exato (versão 001)
-    return genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
-  } catch (e) {
-    console.warn("Flash falhou, tentando Gemini Pro...");
-    // TENTATIVA 2: O modelo clássico (mais estável)
-    return genAI.getGenerativeModel({ model: "gemini-pro" });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      // Se der erro, vamos ver o detalhe real no console
+      const errorData = await response.json();
+      console.error("ERRO DETALHADO DO GOOGLE:", errorData);
+      throw new Error(`Erro API: ${response.status}`);
+    }
+
+    const data = await response.json();
+    // Extraindo o texto da resposta complexa do Google
+    return data.candidates[0].content.parts[0].text;
+
+  } catch (error) {
+    console.error("Erro na chamada manual:", error);
+    return "Erro de conexão com a IA. Verifique o console (F12) para detalhes.";
   }
 };
 
-const getModel = () => {
-  if (!apiKey) {
-    console.error("ERRO: API Key ausente. Verifique o .env na Vercel.");
-    throw new Error("API Key ausente");
-  }
-  const genAI = new GoogleGenerativeAI(apiKey);
-  return getGenerativeModel(genAI);
-};
+// --- Funções Exportadas (Mantendo os mesmos nomes para não quebrar o resto do site) ---
 
 export const generateCopyStrategy = async (prompt: string) => {
-  try {
-    const model = getModel();
-    const result = await model.generateContent(`Atue como Dante (Copywriter). Crie uma copy para: "${prompt}"`);
-    return result.response.text();
-  } catch (error) {
-    console.error("Erro Dante:", error);
-    return "Erro ao gerar copy. (Dante)";
-  }
+  return await callGeminiDirect(`Crie uma copy para: "${prompt}"`, "Dante (Copywriter)");
 };
 
 export const handleSalesObjection = async (objection: string) => {
-  try {
-    const model = getModel();
-    const result = await model.generateContent(`Atue como Brenner (Vendas). Quebre a objeção: "${objection}"`);
-    return result.response.text();
-  } catch (error) {
-    console.error("Erro Brenner:", error);
-    return "Erro ao gerar script. (Brenner)";
-  }
+  return await callGeminiDirect(`Quebre a objeção: "${objection}"`, "Brenner (Vendas)");
 };
 
 export const analyzeFinanceData = async (data: string) => {
-  try {
-    const model = getModel();
-    const result = await model.generateContent(`Atue como Sofia (Financeiro). Analise: ${data}`);
-    return result.response.text();
-  } catch (error) {
-    console.error("Erro Sofia:", error);
-    return "Erro na análise. (Sofia)";
-  }
+  return await callGeminiDirect(`Analise estes dados: ${data}`, "Sofia (Financeiro)");
 };
 
 export const generateCreativeIdeas = async (clientName: string, niche: string) => {
-  try {
-    const model = getModel();
-    // Prompt do Rubens
-    const result = await model.generateContent(`
-      Atue como Rubens (Criativo).
-      Cliente: ${clientName} | Nicho: ${niche}.
-      Gere 3 ideias curtas de Reels/TikTok.
-    `);
-    return result.response.text();
-  } catch (error) {
-    console.error("Erro Rubens Detalhado:", error);
-    // Se der erro aqui, vamos tentar um erro mais legível
-    throw new Error("Falha na conexão com a IA (Rubens). Tente novamente.");
-  }
+  const prompt = `Cliente: ${clientName} | Nicho: ${niche}. Gere 3 ideias curtas de Reels/TikTok.`;
+  return await callGeminiDirect(prompt, "Rubens (Criativo)");
 };
