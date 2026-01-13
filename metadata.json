@@ -1,0 +1,8 @@
+{
+  "name": "Ecossistema RGP",
+  "description": "Plataforma integrada de gestão para Rodrigues Growth Partners, abrangendo inteligência financeira, comercial CRM, estratégia de copy e gestão operacional.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
