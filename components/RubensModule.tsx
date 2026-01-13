@@ -1,6 +1,6 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { CreativeDelivery } from '../types';
+import { generateCreativeIdeas } from '../services/geminiService';
 
 const DELIVERIES: CreativeDelivery[] = [
   { id: '1', client: 'Master Fit', type: 'Pack de Anúncios (5)', deadline: '22/05', status: 'EM_PRODUCAO' },
@@ -10,6 +10,26 @@ const DELIVERIES: CreativeDelivery[] = [
 ];
 
 const RubensModule: React.FC = () => {
+  // Estados para a IA do Rubens
+  const [brainstormClient, setBrainstormClient] = useState('');
+  const [creativeIdeas, setCreativeIdeas] = useState('');
+  const [isBrainstorming, setIsBrainstorming] = useState(false);
+
+  const handleBrainstorm = async () => {
+    if (!brainstormClient) return;
+    setIsBrainstorming(true);
+    try {
+      // Chama o serviço do Gemini (Rubens)
+      const ideas = await generateCreativeIdeas(brainstormClient, "Geral"); 
+      setCreativeIdeas(ideas || '');
+    } catch (e) {
+      console.error(e);
+      setCreativeIdeas("Erro ao gerar ideias. Verifique a conexão.");
+    } finally {
+      setIsBrainstorming(false);
+    }
+  };
+
   const getStatusStyle = (status: string) => {
     switch(status) {
       case 'ENTREGUE': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -76,16 +96,58 @@ const RubensModule: React.FC = () => {
         </div>
       </div>
       
-      {/* Creative Brainstorm Area */}
-      <div className="bg-gradient-to-r from-orange-600/20 to-rose-600/20 p-8 rounded-2xl border border-orange-500/20">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-orange-400">Rubens Creative Assistant</h3>
-            <p className="text-slate-400 max-w-md">Precisa de ideias para um novo criativo? Rubens ajuda você a estruturar o roteiro e os elementos visuais em segundos.</p>
+      {/* Creative Brainstorm Area - AGORA FUNCIONAL COM IA */}
+      <div className="bg-gradient-to-r from-orange-900/40 to-rose-900/40 p-8 rounded-2xl border border-orange-500/20">
+        <div className="flex flex-col gap-6">
+          <div>
+            <h3 className="text-2xl font-bold text-orange-400 flex items-center gap-2">
+              <i className="fas fa-lightbulb"></i> Rubens Creative Lab
+            </h3>
+            <p className="text-slate-400 text-sm mt-1">Gere roteiros de Reels e TikToks instantâneos com IA.</p>
           </div>
-          <button className="px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all flex items-center gap-3">
-            <i className="fas fa-lightbulb"></i> Brainstorm IA
-          </button>
+          
+          <div className="flex flex-col md:flex-row gap-4">
+            <input 
+              type="text" 
+              value={brainstormClient}
+              onChange={(e) => setBrainstormClient(e.target.value)}
+              placeholder="Nome do Cliente ou Nicho (ex: Hamburgueria Artesanal, Clínica de Estética)"
+              className="flex-1 bg-slate-950/50 border border-orange-500/30 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-orange-500 outline-none placeholder-slate-500"
+            />
+            <button 
+              onClick={handleBrainstorm}
+              disabled={isBrainstorming || !brainstormClient}
+              className="px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold shadow-lg shadow-orange-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isBrainstorming ? (
+                <>
+                  <i className="fas fa-spinner fa-spin"></i> Criando...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-magic"></i> Gerar Ideias
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Área de Resultado */}
+          {creativeIdeas && (
+            <div className="mt-4 bg-slate-950 p-6 rounded-xl border border-orange-500/20 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
+                <h4 className="text-orange-400 font-bold uppercase text-xs tracking-widest">Ideias Geradas pelo Rubens:</h4>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(creativeIdeas)}
+                  className="text-xs text-slate-500 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <i className="fas fa-copy"></i> Copiar
+                </button>
+              </div>
+              <div className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
+                {creativeIdeas}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
