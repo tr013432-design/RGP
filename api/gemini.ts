@@ -4,6 +4,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+console.log("API KEY EXISTE?", !!process.env.GEMINI_API_KEY);
 
   try {
     const { prompt, role } = req.body;
