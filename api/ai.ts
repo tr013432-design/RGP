@@ -1,5 +1,4 @@
 export default async function handler(req: any, res: any) {
-  // CORS básico (ajuda quando dá erro em produção)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -11,33 +10,35 @@ export default async function handler(req: any, res: any) {
     const { message } = req.body || {};
     if (!message) return res.status(400).json({ error: "Missing 'message'" });
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: "OPENAI_API_KEY not set on server" });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not set on server" });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Endpoint oficial do Gemini Developer API (GenerateContent)
+    const url =
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" +
+      encodeURIComponent(apiKey);
+
+    const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: message }],
-        max_tokens: 300,
+        contents: [{ role: "user", parts: [{ text: message }] }],
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("OPENAI API ERROR:", data);
+      console.error("GEMINI API ERROR:", data);
       return res.status(response.status).json({
-        error: data?.error?.message || "OpenAI request failed",
+        error: data?.error?.message || "Gemini request failed",
         details: data,
       });
     }
 
-    const reply = data?.choices?.[0]?.message?.content ?? "";
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).join("") ?? "";
+
     return res.status(200).json({ reply });
   } catch (err: any) {
     console.error("SERVER ERROR:", err?.message || err);
