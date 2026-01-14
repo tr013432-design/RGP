@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreativeDelivery } from '../types';
-import { generateCreativeIdeas } from '../services/aiService';
+import { generateCreativeIdeas } from '../services/aiServices';
 
 const DELIVERIES: CreativeDelivery[] = [
   { id: '1', client: 'Master Fit', type: 'Pack de Anúncios (5)', deadline: '22/05', status: 'EM_PRODUCAO' },
