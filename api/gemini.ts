@@ -1,55 +1,43 @@
-export const config = {
-  runtime: "edge",
-};
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: Request) {
-  // 🔐 Lê a chave
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: "API key não configurada" }),
-      { status: 500 }
-    );
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 🧪 TESTE DIRETO NO NAVEGADOR (GET)
-  if (req.method === "GET") {
-    return new Response(
-      JSON.stringify({ status: "API Gemini OK 🚀" }),
-      { status: 200 }
+  try {
+    const { prompt, role } = req.body;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `Você é ${role}. ${prompt}`
+                }
+              ]
+            }
+          ]
+        })
+      }
     );
-  }
 
-  // 🚨 Só aceita POST a partir daqui
-  if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Método não permitido" }),
-      { status: 405 }
-    );
-  }
+    const data = await response.json();
 
-  const { prompt, role } = await req.json();
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: `Atue como ${role}. ${prompt}` }]
-          }
-        ]
-      })
+    if (!response.ok) {
+      console.error('Gemini error:', data);
+      return res.status(500).json({ error: data });
     }
-  );
 
-  const data = await response.json();
-
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: { "Content-Type": "application/json" }
-  });
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error('API crash:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
