@@ -10,140 +10,107 @@ const DELIVERIES: CreativeDelivery[] = [
 ];
 
 const RubensModule: React.FC = () => {
-  // Estados para a IA do Rubens
   const [brainstormClient, setBrainstormClient] = useState('');
   const [creativeIdeas, setCreativeIdeas] = useState('');
   const [isBrainstorming, setIsBrainstorming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleBrainstorm = async () => {
     if (!brainstormClient) return;
+
     setIsBrainstorming(true);
+    setCreativeIdeas('');
+    setError(null);
+
     try {
-      // Chama o serviço do Gemini (Rubens)
-      const ideas = await generateCreativeIdeas(brainstormClient, "Geral"); 
-      setCreativeIdeas(ideas || '');
-    } catch (e) {
-      console.error(e);
-      setCreativeIdeas("Erro ao gerar ideias. Verifique a conexão.");
+      const ideas = await generateCreativeIdeas(brainstormClient, 'Geral');
+
+      if (!ideas || typeof ideas !== 'string') {
+        throw new Error('Resposta inválida da IA');
+      }
+
+      setCreativeIdeas(ideas);
+    } catch (err: any) {
+      console.error('Erro Rubens:', err);
+
+      setError(
+        err?.message ||
+        'Erro ao gerar ideias. Verifique a API ou tente novamente.'
+      );
     } finally {
       setIsBrainstorming(false);
     }
   };
 
   const getStatusStyle = (status: string) => {
-    switch(status) {
-      case 'ENTREGUE': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'EM_PRODUCAO': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'REVISAO': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-      default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+    switch (status) {
+      case 'ENTREGUE':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'EM_PRODUCAO':
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'REVISAO':
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      default:
+        return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Editorial Calendar Summary */}
-        <div className="lg:col-span-2 bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-lg">Calendário Editorial</h3>
-            <div className="flex gap-2">
-              <button className="p-2 bg-slate-800 rounded hover:bg-slate-700"><i className="fas fa-chevron-left text-xs"></i></button>
-              <button className="px-3 py-1 bg-slate-800 rounded text-xs font-medium">Maio 2024</button>
-              <button className="p-2 bg-slate-800 rounded hover:bg-slate-700"><i className="fas fa-chevron-right text-xs"></i></button>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-7 gap-2">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map(day => (
-              <div key={day} className="text-center text-[10px] uppercase font-bold text-slate-500 mb-2">{day}</div>
-            ))}
-            {Array.from({ length: 31 }).map((_, i) => (
-              <div key={i} className={`h-16 border border-slate-800 rounded-lg p-1 text-[10px] relative group hover:bg-slate-800/30 transition-colors ${i+1 === 22 ? 'bg-blue-500/10 border-blue-500/30' : ''}`}>
-                <span className="text-slate-600 group-hover:text-slate-400">{i + 1}</span>
-                {i + 1 === 15 && <div className="mt-1 h-2 w-2 rounded-full bg-rose-500" title="Lançamento X"></div>}
-                {i + 1 === 22 && <div className="mt-1 h-2 w-full rounded bg-blue-500/50"></div>}
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Status Tracker */}
-        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-          <h3 className="font-bold text-lg mb-6">Status de Entregas</h3>
-          <div className="space-y-4">
-            {DELIVERIES.map(item => (
-              <div key={item.id} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-bold text-sm">{item.client}</h4>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getStatusStyle(item.status)}`}>
-                    {item.status.replace('_', ' ')}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mb-3">{item.type}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500"><i className="far fa-calendar-alt mr-1"></i> Deadline: {item.deadline}</span>
-                  <div className="flex -space-x-1">
-                    <img src="https://picsum.photos/20/20?random=1" className="w-5 h-5 rounded-full border border-slate-800" alt="user" />
-                    <img src="https://picsum.photos/20/20?random=2" className="w-5 h-5 rounded-full border border-slate-800" alt="user" />
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm font-medium transition-colors">
-              Ver Todas as Entregas
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Creative Brainstorm Area - AGORA FUNCIONAL COM IA */}
+      {/* ======= BRAINSTORM ======= */}
       <div className="bg-gradient-to-r from-orange-900/40 to-rose-900/40 p-8 rounded-2xl border border-orange-500/20">
         <div className="flex flex-col gap-6">
           <div>
             <h3 className="text-2xl font-bold text-orange-400 flex items-center gap-2">
               <i className="fas fa-lightbulb"></i> Rubens Creative Lab
             </h3>
-            <p className="text-slate-400 text-sm mt-1">Gere roteiros de Reels e TikToks instantâneos com IA.</p>
+            <p className="text-slate-400 text-sm mt-1">
+              Gere roteiros de Reels e TikToks instantâneos com IA.
+            </p>
           </div>
-          
+
           <div className="flex flex-col md:flex-row gap-4">
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={brainstormClient}
               onChange={(e) => setBrainstormClient(e.target.value)}
-              placeholder="Nome do Cliente ou Nicho (ex: Hamburgueria Artesanal, Clínica de Estética)"
+              placeholder="Nome do Cliente ou Nicho"
               className="flex-1 bg-slate-950/50 border border-orange-500/30 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-orange-500 outline-none placeholder-slate-500"
             />
-            <button 
+
+            <button
               onClick={handleBrainstorm}
               disabled={isBrainstorming || !brainstormClient}
-              className="px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold shadow-lg shadow-orange-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold transition-all disabled:opacity-50"
             >
-              {isBrainstorming ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i> Criando...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-magic"></i> Gerar Ideias
-                </>
-              )}
+              {isBrainstorming ? 'Criando…' : 'Gerar Ideias'}
             </button>
           </div>
 
-          {/* Área de Resultado */}
+          {/* ======= ERRO ======= */}
+          {error && (
+            <div className="bg-red-900/30 border border-red-500/30 text-red-300 p-4 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* ======= RESULTADO ======= */}
           {creativeIdeas && (
-            <div className="mt-4 bg-slate-950 p-6 rounded-xl border border-orange-500/20 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-slate-950 p-6 rounded-xl border border-orange-500/20">
               <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
-                <h4 className="text-orange-400 font-bold uppercase text-xs tracking-widest">Ideias Geradas pelo Rubens:</h4>
-                <button 
+                <h4 className="text-orange-400 font-bold uppercase text-xs">
+                  Ideias do Rubens
+                </h4>
+                <button
                   onClick={() => navigator.clipboard.writeText(creativeIdeas)}
-                  className="text-xs text-slate-500 hover:text-white transition-colors flex items-center gap-1"
+                  className="text-xs text-slate-500 hover:text-white"
                 >
-                  <i className="fas fa-copy"></i> Copiar
+                  Copiar
                 </button>
               </div>
-              <div className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
+
+              <div className="whitespace-pre-wrap text-slate-300 leading-relaxed">
                 {creativeIdeas}
               </div>
             </div>
