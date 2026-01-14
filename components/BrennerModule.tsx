@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { handleSalesObjection } from '../services/aiService';
+import { handleSalesObjection } from '../services/aiServices';
 
 const INITIAL_LEADS = [
   { id: '1', name: 'João Silva', company: 'Tech Solutions', value: 5000, status: 'PROSPECÇÃO' },
