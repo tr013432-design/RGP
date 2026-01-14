@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { analyzeFinanceData } from '../services/aiService';
+import { analyzeFinanceData } from '../services/aiServices';
 
 const data = [
   { name: 'Jan', revenue: 45000, spend: 12000 },
