@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { generateCopyStrategy } from '../services/geminiService';
+import { generateCopyStrategy } from '../services/aiService';
 
 const DanteModule: React.FC = () => {
   const [prompt, setPrompt] = useState('');
