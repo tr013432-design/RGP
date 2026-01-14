@@ -1,5 +1,3 @@
-// src/services/aiService.ts
-
 export const callAI = async (prompt: string, role: string) => {
   const res = await fetch("/api/ai", {
     method: "POST",
@@ -7,7 +5,17 @@ export const callAI = async (prompt: string, role: string) => {
     body: JSON.stringify({ prompt, role }),
   });
 
-  const data = await res.json();
+  // 👇 Lê como TEXTO primeiro
+  const text = await res.text();
+
+  // 👇 Tenta converter para JSON
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error("Resposta não-JSON da API:", text);
+    throw new Error("Erro interno da API (resposta inválida)");
+  }
 
   if (!res.ok) {
     console.error("Erro da API:", data);
@@ -16,31 +24,3 @@ export const callAI = async (prompt: string, role: string) => {
 
   return data.text;
 };
-
-/* =========================
-   FUNÇÕES USADAS PELOS MÓDULOS
-========================= */
-
-export const analyzeFinanceData = (data: string) =>
-  callAI(
-    `Analise os seguintes dados financeiros e gere insights estratégicos:\n${data}`,
-    "Sofia (Financeiro)"
-  );
-
-export const handleSalesObjection = (objection: string) =>
-  callAI(
-    `O cliente disse: "${objection}". Gere uma resposta persuasiva.`,
-    "Brenner (Vendas)"
-  );
-
-export const generateCopyStrategy = (prompt: string) =>
-  callAI(
-    `Crie uma estratégia de copywriting profissional para:\n${prompt}`,
-    "Dante (Copywriter)"
-  );
-
-export const generateCreativeIdeas = (client: string, niche: string) =>
-  callAI(
-    `Cliente: ${client}\nNicho: ${niche}\nGere 3 ideias de Reels criativos.`,
-    "Rubens (Criativo)"
-  );
