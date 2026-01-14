@@ -1,43 +1,27 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+const callGemini = async (prompt: string, role: string) => {
+  const response = await fetch("/api/gemini", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, role })
+  });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  const data = await response.json();
+
+  // Se a API respondeu erro
+  if (!response.ok) {
+    console.error("Erro da API Gemini:", data);
+    throw new Error(data.error || "Erro ao chamar a API interna");
   }
 
-  try {
-    const { prompt, role } = req.body;
+  // Retorno seguro
+  return (
+    data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "Nenhuma resposta gerada."
+  );
+};
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `Você é ${role}. ${prompt}`
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Gemini error:', data);
-      return res.status(500).json({ error: data });
-    }
-
-    return res.status(200).json(data);
-  } catch (error) {
-    console.error('API crash:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
-  }
-}
+export const generateCreativeIdeas = (client: string, niche: string) =>
+  callGemini(
+    `Cliente: ${client}. Nicho: ${niche}. Gere 3 ideias de Reels.`,
+    "Rubens (Criativo)"
+  );
