@@ -5,22 +5,35 @@ export const callAI = async (prompt: string, role: string) => {
     body: JSON.stringify({ prompt, role }),
   });
 
-  // 👇 Lê como TEXTO primeiro
   const text = await res.text();
 
-  // 👇 Tenta converter para JSON
   let data;
   try {
     data = JSON.parse(text);
   } catch {
-    console.error("Resposta não-JSON da API:", text);
-    throw new Error("Erro interno da API (resposta inválida)");
+    console.error("Resposta inválida:", text);
+    throw new Error("Erro interno da API");
   }
 
   if (!res.ok) {
-    console.error("Erro da API:", data);
     throw new Error(data.error || "Erro desconhecido");
   }
 
   return data.text;
 };
+
+// 🔥 EXPORTA O QUE OS MÓDULOS USAM
+export const analyzeFinanceData = (data: string) =>
+  callAI(data, "Sofia (Financeiro)");
+
+export const handleSalesObjection = (objection: string) =>
+  callAI(objection, "Brenner (Vendas)");
+
+export const generateCopyStrategy = (prompt: string) =>
+  callAI(prompt, "Dante (Copywriter)");
+
+export const generateCreativeIdeas = (client: string, niche: string) =>
+  callAI(
+    `Cliente: ${client} | Nicho: ${niche}. Gere 3 ideias de Reels.`,
+    "Rubens (Criativo)"
+  );
