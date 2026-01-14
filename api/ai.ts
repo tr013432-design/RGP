@@ -7,25 +7,35 @@ export default async function handler(req: any, res: any) {
 
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "API key ausente" });
+      return res.status(500).json({ error: "OPENAI_API_KEY não configurada" });
     }
-
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
 
     const { prompt, role } = req.body;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: role },
-        { role: "user", content: prompt },
+    if (!prompt || !role) {
+      return res.status(400).json({ error: "Prompt ou role ausente" });
+    }
+
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content: role,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
       ],
     });
 
     return res.status(200).json({
-      text: completion.choices[0].message.content,
+      text: response.output_text,
     });
 
   } catch (err: any) {
