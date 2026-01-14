@@ -1,27 +1,45 @@
-const callGemini = async (prompt: string, role: string) => {
-  const response = await fetch("/api/gemini", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, role })
-  });
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-  const data = await response.json();
-
-  // Se a API respondeu erro
-  if (!response.ok) {
-    console.error("Erro da API Gemini:", data);
-    throw new Error(data.error || "Erro ao chamar a API interna");
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Retorno seguro
-  return (
-    data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-    "Nenhuma resposta gerada."
-  );
-};
+  try {
+    const { prompt, role } = req.body;
 
-export const generateCreativeIdeas = (client: string, niche: string) =>
-  callGemini(
-    `Cliente: ${client}. Nicho: ${niche}. Gere 3 ideias de Reels.`,
-    "Rubens (Criativo)"
-  );
+    if (!prompt || !role) {
+      return res.status(400).json({ error: 'Prompt ou role ausente' });
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: `Você é ${role}. ${prompt}` }]
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Erro Gemini:', data);
+      return res.status(500).json({ error: 'Erro ao gerar conteúdo' });
+    }
+
+    const text =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    return res.status(200).json({ text });
+  } catch (err) {
+    console.error('Erro interno:', err);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
