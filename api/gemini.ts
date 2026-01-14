@@ -1,13 +1,21 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export const config = {
+  runtime: "edge",
+};
+
+export default async function handler(req: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: "API key não configurada" });
+    return new Response(
+      JSON.stringify({ error: "API key não configurada" }),
+      { status: 500 }
+    );
   }
 
-  const { prompt, role } = req.body;
+  const body = await req.json();
+  const { prompt, role } = body;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -23,5 +31,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   const data = await response.json();
-  res.status(200).json(data);
+  return new Response(JSON.stringify(data), { status: 200 });
 }
