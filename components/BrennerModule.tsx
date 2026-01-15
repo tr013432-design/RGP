@@ -1,12 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { handleSalesObjection } from '../services/aiService';
 
+// Interface expandida com os dados solicitados
 interface Lead {
   id: string;
   name: string;
   company: string;
   value: number;
   status: 'PROSPECÇÃO' | 'QUALIFICAÇÃO' | 'PROPOSTA' | 'FECHAMENTO';
+  email: string;
+  phone: string;
+  location: string;
+  source: string;
 }
 
 const BrennerModule: React.FC = () => {
@@ -14,7 +19,17 @@ const BrennerModule: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCol, setActiveCol] = useState<Lead['status']>('PROSPECÇÃO');
-  const [newLead, setNewLead] = useState({ name: '', company: '', value: '' });
+  
+  // Estado do formulário atualizado com os novos campos
+  const [newLead, setNewLead] = useState({ 
+    name: '', 
+    company: '', 
+    value: '',
+    email: '',
+    phone: '',
+    location: '',
+    source: ''
+  });
 
   // --- ESTADO DA IA (BRENNER SCRIPTS) ---
   const [objection, setObjection] = useState('');
@@ -23,7 +38,7 @@ const BrennerModule: React.FC = () => {
 
   const COLUMNS = ['PROSPECÇÃO', 'QUALIFICAÇÃO', 'PROPOSTA', 'FECHAMENTO'] as const;
 
-  // Cálculos de Métricas
+  // Cálculos de Métricas Reais
   const stats = useMemo(() => {
     const closedValue = leads
       .filter(l => l.status === 'FECHAMENTO')
@@ -46,10 +61,15 @@ const BrennerModule: React.FC = () => {
       company: newLead.company,
       value: Number(newLead.value),
       status: activeCol,
+      email: newLead.email,
+      phone: newLead.phone,
+      location: newLead.location,
+      source: newLead.source,
     };
 
     setLeads([...leads, lead]);
-    setNewLead({ name: '', company: '', value: '' });
+    // Reset do formulário
+    setNewLead({ name: '', company: '', value: '', email: '', phone: '', location: '', source: '' });
     setIsModalOpen(false);
   };
 
@@ -100,10 +120,16 @@ const BrennerModule: React.FC = () => {
             
             <div className="space-y-3">
               {leads.filter(l => l.status === col).map(lead => (
-                <div key={lead.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                  <p className="font-semibold text-sm">{lead.name}</p>
+                <div key={lead.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-emerald-500/30 transition-all cursor-pointer">
+                  <div className="flex justify-between">
+                    <p className="font-semibold text-sm">{lead.name}</p>
+                    <span className="text-[10px] text-slate-500">{lead.location}</span>
+                  </div>
                   <p className="text-xs text-slate-400">{lead.company}</p>
-                  <p className="text-xs font-mono text-emerald-400 mt-2">R$ {lead.value.toLocaleString()}</p>
+                  <div className="mt-2 flex justify-between items-center">
+                    <p className="text-xs font-mono text-emerald-400 font-bold">R$ {lead.value.toLocaleString()}</p>
+                    <span className="text-[10px] bg-slate-700 px-1 rounded text-slate-300">{lead.source}</span>
+                  </div>
                 </div>
               ))}
               <button 
@@ -162,48 +188,81 @@ const BrennerModule: React.FC = () => {
             {scriptResponse ? (
               <div className="prose prose-invert prose-sm">
                 <h4 className="text-emerald-400 font-bold mb-3">Script Gerado:</h4>
-                <div className="whitespace-pre-wrap text-slate-300 leading-relaxed">
-                  {scriptResponse}
+                <div className="whitespace-pre-wrap text-slate-300 leading-relaxed italic">
+                  "{scriptResponse}"
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-700 italic text-sm">
-                O contra-ataque aparecerá aqui...
+              <div className="flex items-center justify-center h-full text-slate-700 italic text-sm text-center">
+                O contra-ataque agressivo aparecerá aqui...
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* MODAL DE CADASTRO (Oculto por padrão) */}
+      {/* MODAL DE CADASTRO EXPANDIDO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-bold mb-4 text-white">Novo Lead: {activeCol}</h3>
-            <form onSubmit={handleAddLead} className="space-y-4">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl">
+            <h3 className="text-lg font-bold mb-4 text-white">Novo Lead em {activeCol}</h3>
+            <form onSubmit={handleAddLead} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input 
-                autoFocus
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
                 placeholder="Nome do Prospect"
                 value={newLead.name}
                 onChange={e => setNewLead({...newLead, name: e.target.value})}
+                required
               />
               <input 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
                 placeholder="Empresa"
                 value={newLead.company}
                 onChange={e => setNewLead({...newLead, company: e.target.value})}
               />
               <input 
-                type="number"
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm outline-none focus:ring-1 focus:ring-emerald-500 text-white"
-                placeholder="Valor do Contrato (R$)"
-                value={newLead.value}
-                onChange={e => setNewLead({...newLead, value: e.target.value})}
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                placeholder="E-mail"
+                type="email"
+                value={newLead.email}
+                onChange={e => setNewLead({...newLead, email: e.target.value})}
               />
-              <div className="flex gap-2 pt-2">
+              <input 
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                placeholder="WhatsApp (com DDD)"
+                value={newLead.phone}
+                onChange={e => setNewLead({...newLead, phone: e.target.value})}
+              />
+              <input 
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                placeholder="Localização (Cidade/UF)"
+                value={newLead.location}
+                onChange={e => setNewLead({...newLead, location: e.target.value})}
+              />
+              <select 
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                value={newLead.source}
+                onChange={e => setNewLead({...newLead, source: e.target.value})}
+              >
+                <option value="">Onde nos conheceu?</option>
+                <option value="Instagram">Instagram</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Indicação">Indicação</option>
+                <option value="Tráfego Pago">Tráfego Pago</option>
+              </select>
+              <div className="md:col-span-2">
+                <input 
+                  type="number"
+                  className="w-full bg-emerald-900/20 border border-emerald-500/30 p-3 rounded-lg text-sm text-emerald-400 font-bold"
+                  placeholder="Valor do Contrato (R$)"
+                  value={newLead.value}
+                  onChange={e => setNewLead({...newLead, value: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2 flex gap-2 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2 text-sm text-slate-400">Cancelar</button>
-                <button type="submit" className="flex-2 px-6 py-2 bg-emerald-600 rounded-lg font-bold text-sm text-white hover:bg-emerald-500">SALVAR</button>
+                <button type="submit" className="flex-1 px-6 py-2 bg-emerald-600 rounded-lg font-bold text-sm text-white hover:bg-emerald-500">SALVAR LEAD</button>
               </div>
             </form>
           </div>
