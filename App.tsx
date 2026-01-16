@@ -4,6 +4,7 @@ import SofiaModule from './components/SofiaModule';
 import BrennerModule from './components/BrennerModule';
 import DanteModule from './components/DanteModule';
 import RubensModule from './components/RubensModule';
+import CalendarModule from './components/CalendarModule';
 
 function App() {
   // Estado que controla qual tela está aparecendo
