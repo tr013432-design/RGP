@@ -6,6 +6,13 @@ import SofiaModule from './components/SofiaModule';
 import BrennerModule from './components/BrennerModule';
 import DanteModule from './components/DanteModule';
 import RubensModule from './components/RubensModule';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <GoogleOAuthProvider clientId="SEU_CLIENT_ID_AQUI">
+    <App />
+  </GoogleOAuthProvider>,
+)
 
 const App: React.FC = () => {
   const [activeModule, setActiveModule] = useState<ModuleType>(ModuleType.SOFIA);
