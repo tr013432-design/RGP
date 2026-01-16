@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { generateCopyStrategy } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-// Importações do Google Drive
-import { useGoogleLogin } from '@react-oauth/google';
-import { uploadToDrive } from '../services/googleDriveService';
 
-// Interface para os scripts salvos
 interface SavedScript {
   id: string;
   title: string;
@@ -22,6 +18,7 @@ const DanteModule: React.FC = () => {
   
   // --- LÓGICA DE SALVAMENTO LOCAL (NAVEGADOR) ---
   const [savedScripts, setSavedScripts] = useState<SavedScript[]>(() => {
+    // Verifica se window existe para evitar erro no servidor
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('rgp_dante_scripts');
       return saved ? JSON.parse(saved) : [];
@@ -32,32 +29,6 @@ const DanteModule: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('rgp_dante_scripts', JSON.stringify(savedScripts));
   }, [savedScripts]);
-
-  // --- LÓGICA DE SALVAMENTO NO GOOGLE DRIVE ---
-  const loginAndSaveToDrive = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      if (!copyOutput) return alert("Gere um texto primeiro!");
-      
-      const fileName = `RGP_Dante_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
-      
-      try {
-        // Feedback visual simples
-        const btn = document.getElementById('driveBtn');
-        if(btn) btn.innerText = "Enviando...";
-        
-        await uploadToDrive(tokenResponse.access_token, fileName, copyOutput);
-        alert("✅ Sucesso! Arquivo salvo no seu Google Drive.");
-      } catch (error) {
-        console.error(error);
-        alert("Erro ao salvar no Drive. Verifique o console.");
-      } finally {
-        const btn = document.getElementById('driveBtn');
-        if(btn) btn.innerHTML = '<i class="fab fa-google-drive"></i> Salvar no Drive';
-      }
-    },
-    onError: () => alert("Login com Google falhou."),
-    scope: "https://www.googleapis.com/auth/drive.file",
-  });
 
   const TEMPLATES = [
     { 
@@ -221,8 +192,6 @@ const DanteModule: React.FC = () => {
                 <i className="fas fa-scroll mr-2"></i>Produção Gerada
               </span>
               <div className="flex gap-2">
-                
-                {/* BOTÃO 1: SALVAR LOCAL */}
                 <button 
                   onClick={handleSaveScriptLocal}
                   className="text-xs flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/30 hover:border-emerald-600 text-emerald-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
@@ -230,16 +199,6 @@ const DanteModule: React.FC = () => {
                   <i className="fas fa-save"></i> Salvar Local
                 </button>
 
-                {/* BOTÃO 2: SALVAR DRIVE */}
-                <button 
-                  id="driveBtn"
-                  onClick={() => loginAndSaveToDrive()}
-                  className="text-xs flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-600/30 hover:border-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
-                >
-                  <i className="fab fa-google-drive"></i> Salvar no Drive
-                </button>
-
-                {/* BOTÃO 3: COPIAR */}
                 <button 
                   onClick={() => navigator.clipboard.writeText(copyOutput)}
                   className="text-xs flex items-center gap-2 bg-slate-800 hover:bg-purple-600 border border-slate-700 hover:border-purple-500 text-slate-300 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
