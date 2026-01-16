@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { generateCopyStrategy } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+// Importações do Google Drive
+import { useGoogleLogin } from '@react-oauth/google';
+import { uploadToDrive } from '../services/googleDriveService';
 
 interface SavedScript {
   id: string;
@@ -15,10 +18,10 @@ const DanteModule: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [copyOutput, setCopyOutput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // Estado para o botão de upload
   
-  // --- LÓGICA DE SALVAMENTO LOCAL (NAVEGADOR) ---
+  // SALVAMENTO LOCAL
   const [savedScripts, setSavedScripts] = useState<SavedScript[]>(() => {
-    // Verifica se window existe para evitar erro no servidor
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('rgp_dante_scripts');
       return saved ? JSON.parse(saved) : [];
@@ -29,6 +32,28 @@ const DanteModule: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('rgp_dante_scripts', JSON.stringify(savedScripts));
   }, [savedScripts]);
+
+  // --- INTEGRAÇÃO GOOGLE DRIVE ---
+  const loginAndSaveToDrive = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      if (!copyOutput) return alert("Gere um texto primeiro!");
+      
+      const fileName = `RGP_Dante_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
+      setIsUploading(true);
+
+      try {
+        await uploadToDrive(tokenResponse.access_token, fileName, copyOutput);
+        alert("✅ Sucesso! Arquivo salvo no seu Google Drive.");
+      } catch (error) {
+        console.error(error);
+        alert("Erro ao salvar no Drive. Verifique se deu permissão.");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    onError: () => alert("Login com Google falhou."),
+    scope: "https://www.googleapis.com/auth/drive.file",
+  });
 
   const TEMPLATES = [
     { 
@@ -70,10 +95,8 @@ const DanteModule: React.FC = () => {
 
   const handleSaveScriptLocal = () => {
     if (!copyOutput) return;
-    
     const title = window.prompt("Dê um nome para este Script:", "Novo Script RGP");
     if (!title) return;
-
     const newScript: SavedScript = {
       id: Date.now().toString(),
       title: title,
@@ -81,7 +104,6 @@ const DanteModule: React.FC = () => {
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       type: 'Copy'
     };
-
     setSavedScripts([newScript, ...savedScripts]);
     alert("Script salvo na sua biblioteca local!");
   };
@@ -127,18 +149,11 @@ const DanteModule: React.FC = () => {
             ) : (
               savedScripts.map((script) => (
                 <div key={script.id} className="group flex items-center justify-between p-3 rounded-lg bg-slate-950/50 border border-slate-800 hover:border-purple-500/30 transition-all">
-                  <div 
-                    className="flex-1 cursor-pointer overflow-hidden"
-                    onClick={() => handleLoadScript(script)}
-                  >
+                  <div className="flex-1 cursor-pointer overflow-hidden" onClick={() => handleLoadScript(script)}>
                     <p className="text-xs font-bold text-slate-300 truncate group-hover:text-purple-400 transition-colors">{script.title}</p>
                     <span className="text-[10px] text-slate-600">{script.date} • {script.type}</span>
                   </div>
-                  <button 
-                    onClick={() => handleDeleteScript(script.id)}
-                    className="ml-2 text-slate-600 hover:text-red-500 p-1 rounded transition-colors"
-                    title="Excluir Script"
-                  >
+                  <button onClick={() => handleDeleteScript(script.id)} className="ml-2 text-slate-600 hover:text-red-500 p-1 rounded transition-colors">
                     <i className="fas fa-trash-alt text-xs"></i>
                   </button>
                 </div>
@@ -155,7 +170,7 @@ const DanteModule: React.FC = () => {
             <i className="fas fa-pen-nib text-purple-500"></i> Dante: Creative Copy Generator
           </h3>
           <p className="text-sm text-slate-400 mb-6">
-            Selecione um template ao lado ou descreva o que você precisa. O Dante usa gatilhos mentais para criar textos que convertem.
+            Selecione um template ao lado ou descreva o que você precisa.
           </p>
            
           <div className="space-y-4">
@@ -163,23 +178,11 @@ const DanteModule: React.FC = () => {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:ring-2 focus:ring-purple-500 outline-none h-32 leading-relaxed text-white placeholder-slate-600 transition-all font-mono"
-              placeholder="Clique em um template à esquerda ou digite: 'Email para CEO de empresa de logística oferecendo consultoria...'"
+              placeholder="Clique em um template ou digite..."
             />
             <div className="flex justify-end">
-              <button 
-                onClick={handleGenerate}
-                disabled={isGenerating || !prompt}
-                className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2 text-white shadow-lg shadow-purple-900/20"
-              >
-                {isGenerating ? (
-                  <>
-                    <i className="fas fa-circle-notch fa-spin"></i> Escrevendo...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-wand-magic-sparkles"></i> Gerar Copy
-                  </>
-                )}
+              <button onClick={handleGenerate} disabled={isGenerating || !prompt} className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2 text-white shadow-lg shadow-purple-900/20">
+                {isGenerating ? <><i className="fas fa-circle-notch fa-spin"></i> Escrevendo...</> : <><i className="fas fa-wand-magic-sparkles"></i> Gerar Copy</>}
               </button>
             </div>
           </div>
@@ -192,41 +195,31 @@ const DanteModule: React.FC = () => {
                 <i className="fas fa-scroll mr-2"></i>Produção Gerada
               </span>
               <div className="flex gap-2">
-                <button 
-                  onClick={handleSaveScriptLocal}
-                  className="text-xs flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/30 hover:border-emerald-600 text-emerald-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
-                >
+                
+                {/* BOTÃO 1: SALVAR LOCAL */}
+                <button onClick={handleSaveScriptLocal} className="text-xs flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/30 hover:border-emerald-600 text-emerald-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold">
                   <i className="fas fa-save"></i> Salvar Local
                 </button>
 
+                {/* BOTÃO 2: SALVAR DRIVE (NOVO) */}
                 <button 
-                  onClick={() => navigator.clipboard.writeText(copyOutput)}
-                  className="text-xs flex items-center gap-2 bg-slate-800 hover:bg-purple-600 border border-slate-700 hover:border-purple-500 text-slate-300 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
+                  onClick={() => loginAndSaveToDrive()}
+                  disabled={isUploading}
+                  className="text-xs flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-600/30 hover:border-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
                 >
+                   {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fab fa-google-drive"></i>}
+                   {isUploading ? 'Enviando...' : 'Salvar no Drive'}
+                </button>
+
+                {/* BOTÃO 3: COPIAR */}
+                <button onClick={() => navigator.clipboard.writeText(copyOutput)} className="text-xs flex items-center gap-2 bg-slate-800 hover:bg-purple-600 border border-slate-700 hover:border-purple-500 text-slate-300 hover:text-white px-4 py-2 rounded-lg transition-all font-bold">
                   <i className="fas fa-copy"></i> Copiar
                 </button>
               </div>
             </div>
             
             <div className="text-slate-300 leading-relaxed text-base">
-               <ReactMarkdown 
-                 remarkPlugins={[remarkGfm]}
-                 components={{
-                   h1: ({node, ...props}) => <h1 className="text-2xl font-serif font-bold text-white mb-6 border-b border-purple-500/30 pb-2" {...props} />,
-                   h2: ({node, ...props}) => <h2 className="text-xl font-serif font-bold text-purple-300 mb-4 mt-8" {...props} />,
-                   h3: ({node, ...props}) => <h3 className="text-lg font-bold text-white mb-3 mt-6" {...props} />,
-                   p: ({node, ...props}) => <p className="mb-4 text-slate-300 font-sans" {...props} />,
-                   ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-2 my-4 marker:text-purple-500" {...props} />,
-                   ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-2 my-4 marker:text-purple-500" {...props} />,
-                   li: ({node, ...props}) => <li className="pl-1" {...props} />,
-                   blockquote: ({node, ...props}) => (
-                     <blockquote className="border-l-4 border-purple-500 pl-4 py-2 my-6 bg-purple-900/10 italic text-purple-200 rounded-r-lg" {...props} />
-                   ),
-                   strong: ({node, ...props}) => <strong className="font-bold text-purple-400" {...props} />,
-                 }}
-               >
-                 {copyOutput}
-               </ReactMarkdown>
+               <ReactMarkdown remarkPlugins={[remarkGfm]}>{copyOutput}</ReactMarkdown>
             </div>
           </div>
         )}
