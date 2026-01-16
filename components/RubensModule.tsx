@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateCreativeIdeas } from '../services/aiService';
-// 1. Importações para deixar o texto bonito
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Interface para as ideias salvas
 interface SavedIdea {
   id: string;
   title: string;
@@ -19,8 +17,15 @@ const RubensModule: React.FC = () => {
   const [ideasOutput, setIdeasOutput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Estado da Galeria (Saved Scripts)
-  const [savedIdeas, setSavedIdeas] = useState<SavedIdea[]>([]);
+  // --- LÓGICA DE SALVAMENTO NO NAVEGADOR (LOCAL STORAGE) ---
+  const [savedIdeas, setSavedIdeas] = useState<SavedIdea[]>(() => {
+    const saved = localStorage.getItem('rgp_rubens_ideas');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('rgp_rubens_ideas', JSON.stringify(savedIdeas));
+  }, [savedIdeas]);
 
   const handleGenerate = async () => {
     if (!client) return;
@@ -35,7 +40,6 @@ const RubensModule: React.FC = () => {
     }
   };
 
-  // Função para Salvar
   const handleSave = () => {
     if (!ideasOutput) return;
     
@@ -54,14 +58,12 @@ const RubensModule: React.FC = () => {
     alert("Ideia salva na Galeria!");
   };
 
-  // Função para Deletar
   const handleDelete = (id: string) => {
     if (window.confirm("Jogar esta ideia no lixo?")) {
       setSavedIdeas(savedIdeas.filter(idea => idea.id !== id));
     }
   };
 
-  // Função para Carregar
   const handleLoad = (idea: SavedIdea) => {
     setIdeasOutput(idea.content);
     setClient(idea.niche);
@@ -105,9 +107,7 @@ const RubensModule: React.FC = () => {
       {/* --- COLUNA DA DIREITA: CRIAÇÃO --- */}
       <div className="lg:col-span-3 flex flex-col gap-6 h-full overflow-y-auto pb-10">
         
-        {/* Card de Input */}
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-lg shrink-0 relative overflow-hidden">
-          {/* Efeito de brilho de fundo */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl -z-0 pointer-events-none"></div>
 
           <div className="flex items-center gap-3 mb-6 relative z-10">
@@ -158,7 +158,6 @@ const RubensModule: React.FC = () => {
           </button>
         </div>
 
-        {/* Card de Output (Resultado) */}
         {ideasOutput && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl relative animate-in slide-in-from-bottom-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
@@ -185,13 +184,10 @@ const RubensModule: React.FC = () => {
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  // Títulos estilizados
                   h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-white mb-4 mt-2" {...props} />,
                   h2: ({node, ...props}) => <h2 className="text-lg font-bold text-amber-400 mb-3 mt-6 border-l-4 border-amber-500 pl-3" {...props} />,
                   h3: ({node, ...props}) => <h3 className="text-base font-bold text-white mb-2 mt-4" {...props} />,
-                  // Negritos destacados
                   strong: ({node, ...props}) => <strong className="font-bold text-amber-200" {...props} />,
-                  // Listas limpas
                   ul: ({node, ...props}) => <ul className="space-y-2 my-3 pl-2" {...props} />,
                   li: ({node, ...props}) => (
                     <li className="flex gap-2 items-start" {...props}>
@@ -199,7 +195,6 @@ const RubensModule: React.FC = () => {
                       <span className="flex-1">{props.children}</span>
                     </li>
                   ),
-                  // Parágrafos
                   p: ({node, ...props}) => <p className="mb-3 text-slate-300" {...props} />,
                 }}
               >
@@ -208,7 +203,6 @@ const RubensModule: React.FC = () => {
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
