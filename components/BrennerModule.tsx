@@ -35,7 +35,7 @@ const BrennerModule: React.FC = () => {
     localStorage.setItem('rgp_brenner_leads', JSON.stringify(leads));
   }, [leads]);
 
-  // --- 2. ESTADO DOS SCRIPTS SALVOS (PERSISTÊNCIA) ---
+  // --- 2. ESTADO DOS SCRIPTS SALVOS ---
   const [savedScripts, setSavedScripts] = useState<SavedScript[]>(() => {
     const saved = localStorage.getItem('rgp_brenner_scripts');
     return saved ? JSON.parse(saved) : [];
@@ -45,20 +45,26 @@ const BrennerModule: React.FC = () => {
     localStorage.setItem('rgp_brenner_scripts', JSON.stringify(savedScripts));
   }, [savedScripts]);
 
+  // --- ESTADOS DE CONTROLE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeCol, setActiveCol] = useState<Lead['status']>('PROSPECÇÃO');
-  const [showSavedScripts, setShowSavedScripts] = useState(false); // Toggle para ver biblioteca
+  const [showSavedScripts, setShowSavedScripts] = useState(false);
   
-  const [newLead, setNewLead] = useState({ 
-    name: '', company: '', value: '', email: '', phone: '', location: '', source: ''
+  // Estado para Edição (se null, é criação. se tiver lead, é edição)
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+
+  // Formulário Unificado
+  const [formData, setFormData] = useState<Partial<Lead>>({ 
+    name: '', company: '', value: 0, email: '', phone: '', location: '', source: '', status: 'PROSPECÇÃO'
   });
 
+  // IA States
   const [objection, setObjection] = useState('');
   const [scriptResponse, setScriptResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const COLUMNS = ['PROSPECÇÃO', 'QUALIFICAÇÃO', 'PROPOSTA', 'FECHAMENTO'] as const;
 
+  // --- CÁLCULOS DE KPI ---
   const stats = useMemo(() => {
     const closedValue = leads
       .filter(l => l.status === 'FECHAMENTO')
@@ -70,34 +76,74 @@ const BrennerModule: React.FC = () => {
     };
   }, [leads]);
 
-  const handleAddLead = (e: React.FormEvent) => {
+  // --- LÓGICA DE CRUD (CRIAR/EDITAR) ---
+  
+  // Abrir Modal para Criar
+  const openNewLeadModal = (statusColumn: Lead['status']) => {
+    setEditingLeadId(null); // Modo criação
+    setFormData({ 
+      name: '', company: '', value: 0, email: '', phone: '', location: '', source: '', status: statusColumn 
+    });
+    setIsModalOpen(true);
+  };
+
+  // Abrir Modal para Editar (Ao clicar no card)
+  const openEditModal = (lead: Lead) => {
+    setEditingLeadId(lead.id); // Modo edição
+    setFormData({ ...lead });
+    setIsModalOpen(true);
+  };
+
+  // Salvar (Serve para criar ou atualizar)
+  const handleSaveLead = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLead.name || !newLead.value) return;
+    if (!formData.name || !formData.value) return;
 
-    const lead: Lead = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newLead.name,
-      company: newLead.company,
-      value: Number(newLead.value),
-      status: activeCol,
-      email: newLead.email,
-      phone: newLead.phone,
-      location: newLead.location,
-      source: newLead.source,
-    };
-
-    setLeads([...leads, lead]);
-    setNewLead({ name: '', company: '', value: '', email: '', phone: '', location: '', source: '' });
+    if (editingLeadId) {
+      // ATUALIZAR EXISTENTE
+      setLeads(leads.map(lead => 
+        lead.id === editingLeadId ? { ...lead, ...formData } as Lead : lead
+      ));
+    } else {
+      // CRIAR NOVO
+      const newLead: Lead = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...formData as Lead
+      };
+      setLeads([...leads, newLead]);
+    }
     setIsModalOpen(false);
   };
 
-  const handleDeleteLead = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if(window.confirm("Excluir este lead?")) {
-        setLeads(leads.filter(l => l.id !== id));
+  // Excluir
+  const handleDeleteLead = () => {
+    if (editingLeadId && window.confirm("Tem certeza que deseja excluir este lead?")) {
+        setLeads(leads.filter(l => l.id !== editingLeadId));
+        setIsModalOpen(false);
     }
-  }
+  };
 
+  // --- LÓGICA DE DRAG AND DROP (ARRASTAR) ---
+  const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    e.dataTransfer.setData("leadId", leadId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Necessário para permitir o drop
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStatus: Lead['status']) => {
+    e.preventDefault();
+    const leadId = e.dataTransfer.getData("leadId");
+    
+    // Atualiza o status do lead arrastado
+    setLeads(prevLeads => prevLeads.map(lead => 
+      lead.id === leadId ? { ...lead, status: targetStatus } : lead
+    ));
+  };
+
+  // --- LÓGICA DA IA ---
   const getScript = async () => {
     if (!objection) return;
     setIsLoading(true);
@@ -111,7 +157,6 @@ const BrennerModule: React.FC = () => {
     }
   };
 
-  // Funções de Salvar/Excluir Script
   const handleSaveScript = () => {
     if (!scriptResponse) return;
     const title = window.prompt("Nomeie este Script (ex: Objeção Preço Alto):");
@@ -133,7 +178,8 @@ const BrennerModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      
       {/* 1. PLACAR DE METAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
@@ -152,34 +198,49 @@ const BrennerModule: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. KANBAN DE VENDAS (DADOS SALVOS) */}
-      <div className="flex flex-col md:flex-row gap-4 overflow-x-auto pb-4">
+      {/* 2. KANBAN DE VENDAS (DRAG & DROP ATIVO) */}
+      <div className="flex flex-col md:flex-row gap-4 overflow-x-auto pb-4 min-h-[400px]">
         {COLUMNS.map((col) => (
-          <div key={col} className="flex-1 min-w-[280px] bg-slate-900/50 rounded-xl border border-slate-800 p-4">
-            <div className="flex justify-between items-center mb-4 text-xs font-bold text-slate-400 uppercase">
-              <span>{col}</span>
+          <div 
+            key={col} 
+            // ÁREA DE DROP (SOLTAR)
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, col)}
+            className="flex-1 min-w-[280px] bg-slate-900/50 rounded-xl border border-slate-800 p-4 flex flex-col transition-colors hover:bg-slate-900/80"
+          >
+            <div className="flex justify-between items-center mb-4 text-xs font-bold text-slate-400 uppercase pointer-events-none">
+              <span className={`px-2 py-1 rounded ${col === 'FECHAMENTO' ? 'text-emerald-400 bg-emerald-900/20' : ''}`}>{col}</span>
               <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300">
                 {leads.filter(l => l.status === col).length}
               </span>
             </div>
              
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
               {leads.filter(l => l.status === col).map(lead => (
-                <div key={lead.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-emerald-500/30 transition-all cursor-pointer group relative">
-                  <div className="flex justify-between">
-                    <p className="font-semibold text-sm text-white group-hover:text-emerald-400 transition-colors">{lead.name}</p>
-                    <button onClick={(e) => handleDeleteLead(lead.id, e)} className="text-slate-600 hover:text-red-500 px-2"><i className="fas fa-times"></i></button>
+                <div 
+                  key={lead.id} 
+                  // TORNAR O CARD ARRASTÁVEL
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, lead.id)}
+                  onClick={() => openEditModal(lead)} // Clicar abre edição
+                  className="bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-emerald-500 cursor-grab active:cursor-grabbing hover:shadow-lg hover:shadow-emerald-900/20 transition-all group relative"
+                >
+                  <div className="flex justify-between items-start">
+                    <p className="font-semibold text-sm text-white group-hover:text-emerald-400 transition-colors line-clamp-1">{lead.name}</p>
+                    {/* Ícone indicativo de edição */}
+                    <i className="fas fa-pen text-[10px] text-slate-600 group-hover:text-slate-400"></i>
                   </div>
-                  <p className="text-xs text-slate-400">{lead.company}</p>
-                  <div className="mt-2 flex justify-between items-center">
+                  <p className="text-xs text-slate-400 truncate">{lead.company}</p>
+                  <div className="mt-3 flex justify-between items-center border-t border-slate-700/50 pt-2">
                     <p className="text-xs font-mono text-emerald-400 font-bold">R$ {lead.value.toLocaleString()}</p>
-                    <span className="text-[10px] bg-slate-700 px-1 rounded text-slate-300">{lead.source}</span>
+                    <span className="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-300 truncate max-w-[80px]">{lead.source}</span>
                   </div>
                 </div>
               ))}
+              
               <button 
-                onClick={() => { setActiveCol(col); setIsModalOpen(true); }}
-                className="w-full py-2 border border-dashed border-slate-700 rounded-lg text-xs text-slate-500 hover:border-emerald-500 hover:text-emerald-400 transition-all"
+                onClick={() => openNewLeadModal(col)}
+                className="w-full py-3 border border-dashed border-slate-700 rounded-lg text-xs text-slate-500 hover:border-emerald-500 hover:text-emerald-400 hover:bg-slate-800/50 transition-all mt-2"
               >
                 + Adicionar Lead
               </button>
@@ -188,9 +249,8 @@ const BrennerModule: React.FC = () => {
         ))}
       </div>
 
-      {/* 3. BRENNER SCRIPTS (IA + BIBLIOTECA) */}
+      {/* 3. BRENNER SCRIPTS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ÁREA DE GERAÇÃO */}
         <div className="lg:col-span-2 bg-slate-900 p-6 rounded-xl border border-slate-800">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
@@ -237,7 +297,6 @@ const BrennerModule: React.FC = () => {
             </button>
           </div>
 
-          {/* RESULTADO + BOTÃO SALVAR */}
           {scriptResponse && (
             <div className="mt-6 bg-slate-950 border border-slate-800 rounded-lg p-5 relative">
                <div className="flex justify-end mb-2">
@@ -261,7 +320,6 @@ const BrennerModule: React.FC = () => {
           )}
         </div>
 
-        {/* BIBLIOTECA LATERAL (Igual Dante) */}
         <div className={`lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-full ${showSavedScripts ? 'block' : 'hidden lg:flex'}`}>
             <h4 className="text-xs font-bold uppercase text-slate-500 mb-3 flex items-center gap-2">
                 <i className="fas fa-save"></i> Scripts Salvos
@@ -288,29 +346,47 @@ const BrennerModule: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL DE CADASTRO */}
+      {/* MODAL DE CADASTRO / EDIÇÃO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl">
-            <h3 className="text-lg font-bold mb-4 text-white">Novo Lead em <span className="text-emerald-400">{activeCol}</span></h3>
-            <form onSubmit={handleAddLead} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white" placeholder="Nome" value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} required />
-              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white" placeholder="Empresa" value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} />
-              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white" placeholder="Email" value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} />
-              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white" placeholder="Telefone" value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} />
-              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white" placeholder="Local" value={newLead.location} onChange={e => setNewLead({...newLead, location: e.target.value})} />
-              <select className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white" value={newLead.source} onChange={e => setNewLead({...newLead, source: e.target.value})}>
-                <option value="">Origem?</option>
-                <option value="Instagram">Instagram</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Tráfego">Tráfego</option>
-              </select>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-white">
+                    {editingLeadId ? 'Editar Lead' : 'Novo Lead'}
+                </h3>
+                {editingLeadId && (
+                    <button onClick={handleDeleteLead} className="text-red-500 hover:text-red-400 text-xs flex items-center gap-1 border border-red-900/30 bg-red-900/10 px-3 py-1 rounded-lg transition-colors">
+                        <i className="fas fa-trash"></i> Excluir
+                    </button>
+                )}
+            </div>
+            
+            <form onSubmit={handleSaveLead} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <input type="number" className="w-full bg-emerald-900/20 border border-emerald-500/30 p-3 rounded-lg text-sm text-emerald-400 font-bold" placeholder="Valor (R$)" value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} required />
+                 <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Status (Coluna)</label>
+                 <select 
+                    className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none"
+                    value={formData.status}
+                    onChange={e => setFormData({...formData, status: e.target.value as Lead['status']})}
+                 >
+                    {COLUMNS.map(c => <option key={c} value={c}>{c}</option>)}
+                 </select>
               </div>
-              <div className="md:col-span-2 flex gap-2 pt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2 text-sm text-slate-400">Cancelar</button>
-                <button type="submit" className="flex-1 px-6 py-2 bg-emerald-600 rounded-lg font-bold text-sm text-white">SALVAR</button>
+
+              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none" placeholder="Nome do Cliente" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none" placeholder="Empresa" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none" placeholder="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <input className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none" placeholder="Telefone / WhatsApp" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              
+              <div className="md:col-span-2">
+                <input type="number" className="w-full bg-emerald-900/20 border border-emerald-500/30 p-3 rounded-lg text-sm text-emerald-400 font-bold placeholder-emerald-700/50" placeholder="Valor do Contrato (R$)" value={formData.value} onChange={e => setFormData({...formData, value: Number(e.target.value)})} required />
+              </div>
+
+              <div className="md:col-span-2 flex gap-2 pt-4 border-t border-slate-800 mt-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-sm text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" className="flex-1 px-6 py-3 bg-emerald-600 rounded-lg font-bold text-sm text-white hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition-all">
+                    {editingLeadId ? 'SALVAR ALTERAÇÕES' : 'CRIAR LEAD'}
+                </button>
               </div>
             </form>
           </div>
