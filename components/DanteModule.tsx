@@ -2,6 +2,49 @@ import React, { useState, useEffect } from 'react';
 import { generateCopyStrategy } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+// Adicione essa importação no topo do DanteModule
+import { useGoogleLogin } from '@react-oauth/google';
+import { uploadToDrive } from '../services/googleDriveService';
+
+// ... dentro do componente DanteModule ...
+
+const DanteModule: React.FC = () => {
+  // ... seus estados atuais ...
+
+  // Função que conecta com o Google
+  const loginAndSaveToDrive = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      if (!copyOutput) return alert("Gere um texto primeiro!");
+      
+      const fileName = `RGP_Dante_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
+      
+      try {
+        alert("Enviando para o Google Drive... Aguarde.");
+        await uploadToDrive(tokenResponse.access_token, fileName, copyOutput);
+        alert("✅ Sucesso! Arquivo salvo no seu Google Drive.");
+      } catch (error) {
+        alert("Erro ao salvar no Drive.");
+      }
+    },
+    scope: "https://www.googleapis.com/auth/drive.file", // Pede permissão só para criar arquivos
+  });
+
+  return (
+    // ... no lugar onde estão os botões de Salvar/Copiar ...
+    <div className="flex gap-2">
+       {/* Botão Existente Local */}
+       <button onClick={handleSaveScript} ... >Salvar Local</button>
+
+       {/* NOVO BOTÃO DRIVE */}
+       <button 
+          onClick={() => loginAndSaveToDrive()}
+          className="text-xs flex items-center gap-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-600/30 hover:border-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
+       >
+          <i className="fab fa-google-drive"></i> Salvar no Drive
+       </button>
+    </div>
+  );
+}
 
 // Interface para os scripts salvos
 interface SavedScript {
