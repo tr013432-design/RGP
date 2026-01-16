@@ -21,6 +21,9 @@ function App() {
         return <DanteModule />;
       case 'rubens':
         return <RubensModule />;
+      // ADICIONEI AQUI:
+      case 'calendar':
+        return <CalendarModule />;
       default:
         return <SofiaModule />;
     }
@@ -41,6 +44,8 @@ function App() {
               {activeModule === 'brenner' && 'Brenner: Comercial & CRM'}
               {activeModule === 'dante' && 'Dante: Copy & Estratégia'}
               {activeModule === 'rubens' && 'Rubens: Creative Lab'}
+              {/* ADICIONEI AQUI: */}
+              {activeModule === 'calendar' && 'Agenda Executiva RGP'}
             </h1>
             <p className="text-xs text-slate-500 mt-1">Ecossistema Rodrigues Growth Partners</p>
           </div>
