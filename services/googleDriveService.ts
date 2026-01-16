@@ -3,9 +3,10 @@
 export async function uploadToDrive(accessToken: string, fileName: string, content: string) {
   const metadata = {
     name: fileName,
-    mimeType: "text/plain",
+    mimeType: "text/plain", // Salva como arquivo de texto simples
   };
 
+  // Prepara o conteúdo do arquivo
   const fileContent = new Blob([content], { type: "text/plain" });
   const form = new FormData();
 
@@ -17,13 +18,17 @@ export async function uploadToDrive(accessToken: string, fileName: string, conte
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: form,
       }
     );
+
     const data = await response.json();
     if (data.error) throw new Error(data.error.message);
-    return data;
+    
+    return data; // Retorna confirmação do Google
   } catch (error) {
     console.error("Erro no upload:", error);
     throw error;
