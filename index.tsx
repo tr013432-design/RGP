@@ -17,7 +17,7 @@ root.render(
     {/* 2. O App DEVE estar dentro deste Provider para o Dante funcionar */}
     {/* Se você não tiver um ID real agora, pode deixar esse texto de exemplo, 
         o Dante vai abrir, mas o botão de salvar vai dar erro ao clicar. */}
-    <GoogleOAuthProvider clientId="COLE_SEU_CLIENT_ID_DO_GOOGLE_AQUI">
+    <GoogleOAuthProvider clientId="464694337692-b59b61n80icfqnm3usc3jc19l2v7gra7.apps.googleusercontent.com">
       <App />
     </GoogleOAuthProvider>
   </React.StrictMode>
