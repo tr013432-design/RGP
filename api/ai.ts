@@ -7,7 +7,9 @@ export default async function handler(req: any, res: any) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const { message } = req.body || {};
+    // Agora aceitamos 'config' além da 'message'
+    const { message, config } = req.body || {};
+    
     if (!message) return res.status(400).json({ error: "Missing 'message'" });
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -25,8 +27,10 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: message }] }],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 600,
+          // Se o front-end mandou temperatura específica, usa ela. Senão, usa 0.7
+          temperature: config?.temperature ?? 0.7,
+          // AQUI ESTAVA O ERRO: Mudei o padrão para 4000 e aceito o pedido do front
+          maxOutputTokens: config?.max_tokens ?? 4000,
         },
       }),
     });
