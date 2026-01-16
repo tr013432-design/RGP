@@ -1,36 +1,38 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine } from 'recharts';
 import { analyzeFinanceData } from '../services/aiService';
-// NOVAS IMPORTAÇÕES (Necessário: npm install react-markdown remark-gfm)
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const data = [
-  { name: 'Jan', revenue: 45000, spend: 12000 },
-  { name: 'Fev', revenue: 52000, spend: 15000 },
-  { name: 'Mar', revenue: 48000, spend: 14000 },
-  { name: 'Abr', revenue: 61000, spend: 18000 },
-  { name: 'Mai', revenue: 59000, spend: 17500 },
-  { name: 'Jun', revenue: 72000, spend: 22000 },
-];
+// Interface para definir o formato dos dados reais futuramente
+interface FinanceData {
+  name: string;
+  revenue: number;
+  spend: number;
+}
 
 const SofiaModule: React.FC = () => {
+  // --- ESTADOS DO SISTEMA ---
+  // Aqui removemos o 'const data' fixo e criamos um estado. 
+  // Futuramente, você preencherá isso via API (useEffect).
+  const [chartData, setChartData] = useState<FinanceData[]>([]); 
+  
   const [cost, setCost] = useState('');
   const [revenue, setRevenue] = useState('');
   const [taxRate, setTaxRate] = useState('6');
   const [platformFee, setPlatformFee] = useState('10');
   const [roiData, setRoiData] = useState<{ roi: number; netProfit: number; roas: number } | null>(null);
+  
+  // Estados da IA
   const [insights, setInsights] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [customQuestion, setCustomQuestion] = useState(''); // Nova caixa de texto
 
   const FIXED_COSTS = 15000;
 
   // Função para limpar e formatar a fala da Sofia em Cards
   const formatSofiaInsight = (rawText: string) => {
-    // Remove saudações e apresentações desnecessárias
     let cleaned = rawText.replace(/(Olá|Sou Sofia|Meu nome é sofia|analista financeira sênior|Analisei os dados fornecidos).*?(\.|\n)/gi, '');
-    
-    // Divide o texto em blocos para criar cards separados
     return cleaned.split(/###|##/).filter(s => s.trim().length > 10);
   };
 
@@ -53,7 +55,16 @@ const SofiaModule: React.FC = () => {
   const getAIInsights = async () => {
     setIsLoading(true);
     try {
-      const result = await analyzeFinanceData(JSON.stringify(data));
+      // Prepara o contexto: Dados Atuais + Pergunta do Usuário
+      const dataContext = chartData.length > 0 ? JSON.stringify(chartData) : "Sem dados históricos carregados no gráfico no momento.";
+      const finalPrompt = `
+        ${customQuestion ? `PERGUNTA ESPECÍFICA DO USUÁRIO: "${customQuestion}"` : ''}
+        
+        DADOS FINANCEIROS DISPONÍVEIS:
+        ${dataContext}
+      `;
+
+      const result = await analyzeFinanceData(finalPrompt);
       setInsights(result || '');
     } catch (error) {
       setInsights('Erro ao processar análise inteligente.');
@@ -64,20 +75,20 @@ const SofiaModule: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* KPI Cards */}
+      {/* KPI Cards (Placeholder - Conectar com dados reais depois) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Receita Total', value: 'R$ 72.000', change: '+12%', icon: 'fa-money-bill-wave' },
-          { label: 'Margem Líquida', value: '68%', change: '+5%', icon: 'fa-percentage' },
-          { label: 'CAC Médio', value: 'R$ 45,20', change: '-8%', icon: 'fa-users-slash' },
-          { label: 'LTV/CAC', value: '4.2x', change: '+0.2', icon: 'fa-rocket' },
+          { label: 'Receita Total', value: 'R$ 0,00', change: '0%', icon: 'fa-money-bill-wave' },
+          { label: 'Margem Líquida', value: '0%', change: '0%', icon: 'fa-percentage' },
+          { label: 'CAC Médio', value: 'R$ 0,00', change: '0%', icon: 'fa-users-slash' },
+          { label: 'LTV/CAC', value: '0.0x', change: '0.0', icon: 'fa-rocket' },
         ].map((kpi, i) => (
-          <div key={i} className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm">
+          <div key={i} className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm opacity-70">
             <div className="flex justify-between items-start mb-4">
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <i className={`fas ${kpi.icon} text-blue-500`}></i>
               </div>
-              <span className="text-xs font-bold text-emerald-400">{kpi.change}</span>
+              <span className="text-xs font-bold text-slate-500">{kpi.change}</span>
             </div>
             <h3 className="text-slate-400 text-sm font-medium">{kpi.label}</h3>
             <p className="text-2xl font-bold mt-1 text-white">{kpi.value}</p>
@@ -89,35 +100,59 @@ const SofiaModule: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Chart Section */}
           <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-lg text-white">Eficiência Financeira</h3>
-              <button onClick={getAIInsights} disabled={isLoading} className="text-xs bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-white">
-                <i className={`fas ${isLoading ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
-                {isLoading ? 'ANALISANDO...' : 'PEDIR INSIGHT IA'}
-              </button>
+            <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
+              <h3 className="font-bold text-lg text-white mb-2 md:mb-0">Eficiência Financeira</h3>
+              
+              {/* --- NOVA ÁREA DE PERGUNTA + BOTÃO --- */}
+              <div className="flex w-full md:w-auto gap-2">
+                <input 
+                  type="text" 
+                  value={customQuestion}
+                  onChange={(e) => setCustomQuestion(e.target.value)}
+                  placeholder="Ex: Por que meu ROI caiu este mês?"
+                  className="flex-1 md:w-64 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 outline-none transition-all"
+                />
+                <button 
+                  onClick={getAIInsights} 
+                  disabled={isLoading} 
+                  className="text-xs bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-white whitespace-nowrap"
+                >
+                  <i className={`fas ${isLoading ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
+                  {isLoading ? 'ANALISANDO...' : 'PEDIR ANÁLISE'}
+                </button>
+              </div>
             </div>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }} />
-                  <ReferenceLine y={FIXED_COSTS} label={{ position: 'right', value: 'Break-even', fill: '#64748b', fontSize: 10 }} stroke="#64748b" strokeDasharray="3 3" />
-                  <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
-                  <Area type="monotone" dataKey="spend" stroke="#f43f5e" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
-                </AreaChart>
-              </ResponsiveContainer>
+
+            <div className="h-[300px] flex items-center justify-center bg-slate-950/30 rounded-lg border border-slate-800 border-dashed">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }} />
+                    <ReferenceLine y={FIXED_COSTS} label={{ position: 'right', value: 'Break-even', fill: '#64748b', fontSize: 10 }} stroke="#64748b" strokeDasharray="3 3" />
+                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
+                    <Area type="monotone" dataKey="spend" stroke="#f43f5e" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center">
+                  <i className="fas fa-chart-area text-4xl text-slate-700 mb-2"></i>
+                  <p className="text-slate-500 text-sm">Nenhum dado financeiro carregado.</p>
+                  <p className="text-slate-600 text-xs mt-1">Conecte uma planilha ou banco de dados.</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* NOVA VISUALIZAÇÃO DE INSIGHTS COM MARKDOWN CORRIGIDO */}
+          {/* VISUALIZAÇÃO DE INSIGHTS */}
           {insights && (
             <div className="grid grid-cols-1 gap-4 animate-in slide-in-from-top-4 duration-500">
               {formatSofiaInsight(insights).map((section, idx) => (
@@ -126,34 +161,20 @@ const SofiaModule: React.FC = () => {
                     <div className="mt-1 flex-shrink-0">
                       <i className="fas fa-bolt-lightning text-blue-400 text-xs"></i>
                     </div>
-                    {/* AQUI ESTÁ A CORREÇÃO MÁGICA */}
                     <div className="text-slate-300 text-sm leading-relaxed w-full min-w-0">
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          // Estilizando a tabela para não quebrar
                           table: ({node, ...props}) => (
                             <div className="overflow-x-auto my-4 border border-slate-700 rounded-lg shadow-sm">
                               <table className="min-w-full divide-y divide-slate-700 text-left" {...props} />
                             </div>
                           ),
-                          thead: ({node, ...props}) => (
-                            <thead className="bg-slate-800 text-slate-200" {...props} />
-                          ),
-                          th: ({node, ...props}) => (
-                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-blue-200" {...props} />
-                          ),
-                          td: ({node, ...props}) => (
-                            <td className="px-3 py-2 text-xs text-slate-400 whitespace-nowrap border-t border-slate-700/50" {...props} />
-                          ),
-                          // Estilizando Listas
-                          ul: ({node, ...props}) => (
-                            <ul className="list-disc pl-4 space-y-1 my-2" {...props} />
-                          ),
-                          // Estilizando Negritos
-                          strong: ({node, ...props}) => (
-                            <strong className="font-bold text-emerald-400" {...props} />
-                          )
+                          thead: ({node, ...props}) => <thead className="bg-slate-800 text-slate-200" {...props} />,
+                          th: ({node, ...props}) => <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-blue-200" {...props} />,
+                          td: ({node, ...props}) => <td className="px-3 py-2 text-xs text-slate-400 whitespace-nowrap border-t border-slate-700/50" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-1 my-2" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-bold text-emerald-400" {...props} />
                         }}
                       >
                         {section.trim()}
