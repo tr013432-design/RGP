@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateCopyStrategy } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,10 +17,17 @@ const DanteModule: React.FC = () => {
   const [copyOutput, setCopyOutput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Estado para armazenar os scripts salvos (Biblioteca)
-  const [savedScripts, setSavedScripts] = useState<SavedScript[]>([
-    { id: '1', title: 'VSL Infoproduto High-Ticket', content: 'Exemplo de script salvo...', date: '15/01', type: 'VSL' }
-  ]);
+  // --- LÓGICA DE SALVAMENTO NO NAVEGADOR (LOCAL STORAGE) ---
+  const [savedScripts, setSavedScripts] = useState<SavedScript[]>(() => {
+    // Ao iniciar, tenta buscar dados salvos
+    const saved = localStorage.getItem('rgp_dante_scripts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Sempre que a lista 'savedScripts' mudar, salva no navegador
+  useEffect(() => {
+    localStorage.setItem('rgp_dante_scripts', JSON.stringify(savedScripts));
+  }, [savedScripts]);
 
   const TEMPLATES = [
     { 
@@ -43,7 +50,6 @@ const DanteModule: React.FC = () => {
     },
   ];
 
-  // 1. Função que faz os botões de Template funcionarem
   const handleTemplateClick = (templatePrompt: string) => {
     setPrompt(templatePrompt);
   };
@@ -61,11 +67,9 @@ const DanteModule: React.FC = () => {
     }
   };
 
-  // 2. Função para Salvar o Script
   const handleSaveScript = () => {
     if (!copyOutput) return;
     
-    // Pergunta o nome do script para o usuário
     const title = window.prompt("Dê um nome para este Script:", "Novo Script RGP");
     if (!title) return;
 
@@ -78,17 +82,15 @@ const DanteModule: React.FC = () => {
     };
 
     setSavedScripts([newScript, ...savedScripts]);
-    alert("Script salvo na sua biblioteca lateral!");
+    alert("Script salvo na sua biblioteca local!");
   };
 
-  // 3. Função para Excluir o Script
   const handleDeleteScript = (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir este script?")) {
+    if (window.confirm("Tem certeza que deseja excluir este script permanentemente?")) {
       setSavedScripts(savedScripts.filter(s => s.id !== id));
     }
   };
 
-  // Função para carregar um script salvo de volta para a tela
   const handleLoadScript = (script: SavedScript) => {
     setCopyOutput(script.content);
     setPrompt(`(Carregado do histórico: ${script.title})`);
@@ -96,10 +98,8 @@ const DanteModule: React.FC = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-100px)]">
-      {/* COLUNA DA ESQUERDA: TEMPLATES E BIBLIOTECA */}
+      {/* COLUNA DA ESQUERDA */}
       <div className="lg:col-span-1 space-y-6 flex flex-col h-full">
-        
-        {/* Templates */}
         <div>
           <h3 className="font-bold text-lg mb-4 text-white">Templates Rápidos</h3>
           <div className="space-y-3">
@@ -116,7 +116,6 @@ const DanteModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Biblioteca de Scripts Salvos */}
         <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-4 overflow-hidden flex flex-col">
           <h4 className="text-xs font-bold uppercase text-slate-500 mb-3 flex items-center gap-2">
             <i className="fas fa-save"></i> Meus Scripts Salvos
@@ -148,7 +147,7 @@ const DanteModule: React.FC = () => {
         </div>
       </div>
 
-      {/* COLUNA DA DIREITA: ÁREA DE CRIAÇÃO */}
+      {/* COLUNA DA DIREITA */}
       <div className="lg:col-span-3 flex flex-col gap-6 h-full overflow-y-auto pb-10">
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-lg shrink-0">
           <h3 className="font-bold text-xl mb-4 flex items-center gap-2 text-white">
@@ -185,7 +184,6 @@ const DanteModule: React.FC = () => {
           </div>
         </div>
 
-        {/* ÁREA DE SAÍDA (RESULTADO) */}
         {copyOutput && (
           <div className="bg-slate-900 p-8 rounded-xl border border-slate-800 animate-in slide-in-from-bottom-4 duration-500 relative shadow-2xl mb-10">
             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
@@ -193,14 +191,12 @@ const DanteModule: React.FC = () => {
                 <i className="fas fa-scroll mr-2"></i>Produção Gerada
               </span>
               <div className="flex gap-2">
-                {/* BOTÃO DE SALVAR */}
                 <button 
                   onClick={handleSaveScript}
                   className="text-xs flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-600/30 hover:border-emerald-600 text-emerald-400 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
                 >
                   <i className="fas fa-save"></i> Salvar na Biblioteca
                 </button>
-                {/* BOTÃO DE COPIAR */}
                 <button 
                   onClick={() => navigator.clipboard.writeText(copyOutput)}
                   className="text-xs flex items-center gap-2 bg-slate-800 hover:bg-purple-600 border border-slate-700 hover:border-purple-500 text-slate-300 hover:text-white px-4 py-2 rounded-lg transition-all font-bold"
