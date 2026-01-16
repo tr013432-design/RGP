@@ -1,6 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine } from 'recharts';
 import { analyzeFinanceData } from '../services/aiService';
+// NOVAS IMPORTAÇÕES (Necessário: npm install react-markdown remark-gfm)
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const data = [
   { name: 'Jan', revenue: 45000, spend: 12000 },
@@ -24,11 +27,11 @@ const SofiaModule: React.FC = () => {
 
   // Função para limpar e formatar a fala da Sofia em Cards
   const formatSofiaInsight = (rawText: string) => {
-    // Remove saudações e apresentações
+    // Remove saudações e apresentações desnecessárias
     let cleaned = rawText.replace(/(Olá|Sou Sofia|Meu nome é sofia|analista financeira sênior|Analisei os dados fornecidos).*?(\.|\n)/gi, '');
     
-    // Divide o texto em blocos baseados em marcadores comuns (##, ###, números ou quebras de linha duplas)
-    return cleaned.split(/###|##|\d\./).filter(s => s.trim().length > 10);
+    // Divide o texto em blocos para criar cards separados
+    return cleaned.split(/###|##/).filter(s => s.trim().length > 10);
   };
 
   const calculateAdvancedROI = () => {
@@ -88,7 +91,7 @@ const SofiaModule: React.FC = () => {
           <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg text-white">Eficiência Financeira</h3>
-              <button onClick={getAIInsights} disabled={isLoading} className="text-xs bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2">
+              <button onClick={getAIInsights} disabled={isLoading} className="text-xs bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold transition-all flex items-center gap-2 text-white">
                 <i className={`fas ${isLoading ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
                 {isLoading ? 'ANALISANDO...' : 'PEDIR INSIGHT IA'}
               </button>
@@ -114,18 +117,48 @@ const SofiaModule: React.FC = () => {
             </div>
           </div>
 
-          {/* NOVA VISUALIZAÇÃO DE INSIGHTS EM CARDS */}
+          {/* NOVA VISUALIZAÇÃO DE INSIGHTS COM MARKDOWN CORRIGIDO */}
           {insights && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-4 duration-500">
+            <div className="grid grid-cols-1 gap-4 animate-in slide-in-from-top-4 duration-500">
               {formatSofiaInsight(insights).map((section, idx) => (
-                <div key={idx} className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl relative group hover:border-blue-500/40 transition-all">
-                  <div className="flex gap-3">
-                    <div className="mt-1">
+                <div key={idx} className="bg-blue-900/10 border border-blue-500/20 p-5 rounded-xl relative group hover:border-blue-500/40 transition-all w-full overflow-hidden">
+                  <div className="flex gap-3 w-full">
+                    <div className="mt-1 flex-shrink-0">
                       <i className="fas fa-bolt-lightning text-blue-400 text-xs"></i>
                     </div>
-                    <p className="text-slate-300 text-sm leading-relaxed">
-                      {section.trim()}
-                    </p>
+                    {/* AQUI ESTÁ A CORREÇÃO MÁGICA */}
+                    <div className="text-slate-300 text-sm leading-relaxed w-full min-w-0">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // Estilizando a tabela para não quebrar
+                          table: ({node, ...props}) => (
+                            <div className="overflow-x-auto my-4 border border-slate-700 rounded-lg shadow-sm">
+                              <table className="min-w-full divide-y divide-slate-700 text-left" {...props} />
+                            </div>
+                          ),
+                          thead: ({node, ...props}) => (
+                            <thead className="bg-slate-800 text-slate-200" {...props} />
+                          ),
+                          th: ({node, ...props}) => (
+                            <th className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-blue-200" {...props} />
+                          ),
+                          td: ({node, ...props}) => (
+                            <td className="px-3 py-2 text-xs text-slate-400 whitespace-nowrap border-t border-slate-700/50" {...props} />
+                          ),
+                          // Estilizando Listas
+                          ul: ({node, ...props}) => (
+                            <ul className="list-disc pl-4 space-y-1 my-2" {...props} />
+                          ),
+                          // Estilizando Negritos
+                          strong: ({node, ...props}) => (
+                            <strong className="font-bold text-emerald-400" {...props} />
+                          )
+                        }}
+                      >
+                        {section.trim()}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               ))}
