@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { handleSalesObjection } from '../services/aiService';
+// 1. IMPORTAÇÕES NECESSÁRIAS PARA O VISUAL FUNCIONAR
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Interface expandida com os dados solicitados
 interface Lead {
@@ -19,7 +22,7 @@ const BrennerModule: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCol, setActiveCol] = useState<Lead['status']>('PROSPECÇÃO');
-  
+   
   // Estado do formulário atualizado com os novos campos
   const [newLead, setNewLead] = useState({ 
     name: '', 
@@ -117,12 +120,12 @@ const BrennerModule: React.FC = () => {
                 {leads.filter(l => l.status === col).length}
               </span>
             </div>
-            
+             
             <div className="space-y-3">
               {leads.filter(l => l.status === col).map(lead => (
-                <div key={lead.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-emerald-500/30 transition-all cursor-pointer">
+                <div key={lead.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-emerald-500/30 transition-all cursor-pointer group">
                   <div className="flex justify-between">
-                    <p className="font-semibold text-sm">{lead.name}</p>
+                    <p className="font-semibold text-sm text-white group-hover:text-emerald-400 transition-colors">{lead.name}</p>
                     <span className="text-[10px] text-slate-500">{lead.location}</span>
                   </div>
                   <p className="text-xs text-slate-400">{lead.company}</p>
@@ -143,21 +146,21 @@ const BrennerModule: React.FC = () => {
         ))}
       </div>
 
-      {/* 3. BRENNER SCRIPTS (IA INTEGRADA) */}
+      {/* 3. BRENNER SCRIPTS (IA INTEGRADA COM VISUAL NOVO) */}
       <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
              <i className="fas fa-bolt text-emerald-500"></i>
           </div>
           <div>
-            <h3 className="font-bold text-lg">Brenner Scripts</h3>
+            <h3 className="font-bold text-lg text-white">Brenner Scripts</h3>
             <p className="text-xs text-slate-400">Supere objeções em tempo real com IA</p>
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <p className="text-sm font-medium">Qual a objeção do lead?</p>
+            <p className="text-sm font-medium text-slate-300">Qual a objeção do lead?</p>
             <div className="grid grid-cols-2 gap-2">
               {['Tá caro', 'Vou pensar', 'Falar com sócio', 'Não tenho tempo'].map(btn => (
                 <button 
@@ -172,29 +175,50 @@ const BrennerModule: React.FC = () => {
             <textarea 
               value={objection}
               onChange={(e) => setObjection(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:ring-1 focus:ring-emerald-500 outline-none h-24 text-white"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:ring-1 focus:ring-emerald-500 outline-none h-24 text-white placeholder-slate-600"
               placeholder="Digite a objeção personalizada..."
             />
             <button 
               onClick={getScript}
               disabled={isLoading || !objection}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold text-white transition-all disabled:opacity-30"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold text-white transition-all disabled:opacity-30 shadow-lg shadow-emerald-900/20"
             >
               {isLoading ? 'CONSULTANDO BRENNER...' : 'GERAR CONTRA-ATAQUE'}
             </button>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 min-h-[200px] relative">
+          {/* ÁREA DE RESPOSTA CORRIGIDA COM MARKDOWN */}
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-5 min-h-[200px] relative overflow-y-auto max-h-[500px]">
             {scriptResponse ? (
-              <div className="prose prose-invert prose-sm">
-                <h4 className="text-emerald-400 font-bold mb-3">Script Gerado:</h4>
-                <div className="whitespace-pre-wrap text-slate-300 leading-relaxed italic">
-                  "{scriptResponse}"
-                </div>
+              <div className="text-slate-300 text-sm leading-relaxed">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // Títulos
+                    h1: ({node, ...props}) => <h1 className="text-xl font-bold text-emerald-400 mb-3" {...props} />,
+                    h2: ({node, ...props}) => <h2 className="text-lg font-bold text-emerald-400 mb-2 mt-4" {...props} />,
+                    h3: ({node, ...props}) => <h3 className="text-md font-bold text-white mb-2 mt-3" {...props} />,
+                    // Listas
+                    ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-2 my-3 marker:text-emerald-500" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal pl-4 space-y-2 my-3 marker:text-emerald-500" {...props} />,
+                    li: ({node, ...props}) => <li className="pl-1" {...props} />,
+                    // Parágrafos
+                    p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                    // Negrito (Destaque Brenner)
+                    strong: ({node, ...props}) => <strong className="font-bold text-emerald-400 bg-emerald-900/20 px-1 rounded" {...props} />,
+                    // Citações (Exemplos de fala)
+                    blockquote: ({node, ...props}) => (
+                      <blockquote className="border-l-4 border-emerald-500 pl-4 py-1 my-4 bg-slate-900/50 italic text-slate-400" {...props} />
+                    ),
+                  }}
+                >
+                  {scriptResponse}
+                </ReactMarkdown>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-700 italic text-sm text-center">
-                O contra-ataque agressivo aparecerá aqui...
+              <div className="flex flex-col items-center justify-center h-full text-slate-600 italic text-sm text-center">
+                 <i className="fas fa-comment-dollar text-2xl mb-2 opacity-20"></i>
+                <p>O contra-ataque agressivo aparecerá aqui...</p>
               </div>
             )}
           </div>
@@ -203,44 +227,44 @@ const BrennerModule: React.FC = () => {
 
       {/* MODAL DE CADASTRO EXPANDIDO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl">
-            <h3 className="text-lg font-bold mb-4 text-white">Novo Lead em {activeCol}</h3>
+            <h3 className="text-lg font-bold mb-4 text-white">Novo Lead em <span className="text-emerald-400">{activeCol}</span></h3>
             <form onSubmit={handleAddLead} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none transition-all"
                 placeholder="Nome do Prospect"
                 value={newLead.name}
                 onChange={e => setNewLead({...newLead, name: e.target.value})}
                 required
               />
               <input 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none transition-all"
                 placeholder="Empresa"
                 value={newLead.company}
                 onChange={e => setNewLead({...newLead, company: e.target.value})}
               />
               <input 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none transition-all"
                 placeholder="E-mail"
                 type="email"
                 value={newLead.email}
                 onChange={e => setNewLead({...newLead, email: e.target.value})}
               />
               <input 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none transition-all"
                 placeholder="WhatsApp (com DDD)"
                 value={newLead.phone}
                 onChange={e => setNewLead({...newLead, phone: e.target.value})}
               />
               <input 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none transition-all"
                 placeholder="Localização (Cidade/UF)"
                 value={newLead.location}
                 onChange={e => setNewLead({...newLead, location: e.target.value})}
               />
               <select 
-                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white"
+                className="w-full bg-slate-800 border border-slate-700 p-3 rounded-lg text-sm text-white focus:border-emerald-500 outline-none transition-all"
                 value={newLead.source}
                 onChange={e => setNewLead({...newLead, source: e.target.value})}
               >
@@ -253,7 +277,7 @@ const BrennerModule: React.FC = () => {
               <div className="md:col-span-2">
                 <input 
                   type="number"
-                  className="w-full bg-emerald-900/20 border border-emerald-500/30 p-3 rounded-lg text-sm text-emerald-400 font-bold"
+                  className="w-full bg-emerald-900/20 border border-emerald-500/30 p-3 rounded-lg text-sm text-emerald-400 font-bold placeholder-emerald-700/50 focus:border-emerald-400 outline-none transition-all"
                   placeholder="Valor do Contrato (R$)"
                   value={newLead.value}
                   onChange={e => setNewLead({...newLead, value: e.target.value})}
@@ -261,8 +285,8 @@ const BrennerModule: React.FC = () => {
                 />
               </div>
               <div className="md:col-span-2 flex gap-2 pt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2 text-sm text-slate-400">Cancelar</button>
-                <button type="submit" className="flex-1 px-6 py-2 bg-emerald-600 rounded-lg font-bold text-sm text-white hover:bg-emerald-500">SALVAR LEAD</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" className="flex-1 px-6 py-2 bg-emerald-600 rounded-lg font-bold text-sm text-white hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition-all">SALVAR LEAD</button>
               </div>
             </form>
           </div>
