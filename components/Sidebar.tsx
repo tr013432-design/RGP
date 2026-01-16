@@ -14,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, setActiveModule }) => {
     { id: 'brenner', label: 'Brenner', icon: 'fa-chart-line', color: 'text-emerald-400' },
     { id: 'dante', label: 'Dante', icon: 'fa-pen-nib', color: 'text-purple-400' },
     { id: 'rubens', label: 'Rubens', icon: 'fa-layer-group', color: 'text-amber-400' },
+    { id: 'calendar', label: 'Agenda', icon: 'fa-calendar-alt', color: 'text-pink-400' },
   ];
 
   return (
