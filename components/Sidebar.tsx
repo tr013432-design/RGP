@@ -8,13 +8,14 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeModule, setActiveModule }) => {
   
-  // Lista dos botões do menu
+  // Lista dos botões do menu atualizada com "Tarefas"
   const menuItems = [
     { id: 'sofia', label: 'Sofia', icon: 'fa-brain', color: 'text-blue-400' },
     { id: 'brenner', label: 'Brenner', icon: 'fa-chart-line', color: 'text-emerald-400' },
     { id: 'dante', label: 'Dante', icon: 'fa-pen-nib', color: 'text-purple-400' },
     { id: 'rubens', label: 'Rubens', icon: 'fa-layer-group', color: 'text-amber-400' },
     { id: 'calendar', label: 'Agenda', icon: 'fa-calendar-alt', color: 'text-pink-400' },
+    { id: 'tasks', label: 'Tarefas e Metas', icon: 'fa-tasks', color: 'text-cyan-400' }, // Nova aba adicionada
   ];
 
   return (
@@ -31,15 +32,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeModule, setActiveModule }) => {
       </div>
 
       {/* Menu de Navegação */}
-      <nav className="flex-1 px-4 space-y-2">
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
         {menuItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => setActiveModule(item.id)} // AQUI ESTÁ A MÁGICA: Ao clicar, avisa o App para trocar
+            onClick={() => setActiveModule(item.id)}
             className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all duration-200 group ${
               activeModule === item.id
-                ? 'bg-slate-800 border border-slate-700 shadow-md' // Estilo do botão ativo
-                : 'hover:bg-slate-800/50 hover:translate-x-1'      // Estilo do botão inativo
+                ? 'bg-slate-800 border border-slate-700 shadow-md'
+                : 'hover:bg-slate-800/50 hover:translate-x-1'
             }`}
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
