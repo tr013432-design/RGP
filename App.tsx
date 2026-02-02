@@ -22,14 +22,12 @@ function App() {
         return <DanteModule />;
       case 'rubens':
         return <RubensModule />;
-      // ADICIONEI AQUI:
       case 'calendar':
         return <CalendarModule />;
+      case 'tasks': // Agora o case está no lugar certo!
+        return <Tasks />;
       default:
         return <SofiaModule />;
-        switch (activeModule) {
-      case 'tasks':
-        return <Tasks />;
     }
   };
 
@@ -48,10 +46,10 @@ function App() {
               {activeModule === 'brenner' && 'Brenner: Comercial & CRM'}
               {activeModule === 'dante' && 'Dante: Copy & Estratégia'}
               {activeModule === 'rubens' && 'Rubens: Creative Lab'}
-              {/* ADICIONEI AQUI: */}
               {activeModule === 'calendar' && 'Agenda Executiva RGP'}
+              {activeModule === 'tasks' && 'Metas & Tarefas Diárias'} 
             </h1>
-            <p className="text-xs text-slate-500 mt-1">Ecossistema Rodrigues Growth Partners</p>
+            <p className="text-xs text-slate-500 mt-1 text-left">Ecossistema Rodrigues Growth Partners</p>
           </div>
           
           <div className="flex items-center gap-3">
