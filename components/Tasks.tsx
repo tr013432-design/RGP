@@ -13,13 +13,11 @@ interface Focus {
 }
 
 const Tasks: React.FC = () => {
-  // Estado para as Tarefas
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('@RGP:tasks');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Estado para os 3 Focos Editáveis
   const [focos, setFocos] = useState<Focus[]>(() => {
     const saved = localStorage.getItem('@RGP:focos');
     return saved ? JSON.parse(saved) : [
@@ -31,11 +29,28 @@ const Tasks: React.FC = () => {
 
   const [inputValue, setInputValue] = useState('');
 
-  // Salvar sempre que houver mudança
   useEffect(() => {
     localStorage.setItem('@RGP:tasks', JSON.stringify(tasks));
     localStorage.setItem('@RGP:focos', JSON.stringify(focos));
   }, [tasks, focos]);
+
+  // Cálculo de Progresso para a Barra de Eficiência
+  const completedCount = tasks.filter(t => t.completed).length;
+  const totalCount = tasks.length;
+  const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Função para aplicar sugestões das IAs do Ecossistema
+  const applyAiFocus = (perfil: 'sofia' | 'brenner' | 'dante' | 'rubens') => {
+    const sugestoes = {
+      sofia: ['Otimizar CPL de Anúncios', 'Auditoria de Fluxo CRM', 'Revisar Planilha ROI'],
+      brenner: ['Cold Call: 20 Contatos', 'Follow-up de Propostas', 'Contorno de Objeções'],
+      dante: ['Copy da Landing Page', 'Roteiro para VSL Nova', 'Gatilhos de E-mail Marketing'],
+      rubens: ['Design de 3 Criativos', 'Ajustar Identidade Visual', 'Edição de Reels Jarvis']
+    };
+
+    const novasMetas = sugestoes[perfil];
+    setFocos(focos.map((f, i) => ({ ...f, title: novasMetas[i] })));
+  };
 
   const addTask = () => {
     if (!inputValue.trim()) return;
@@ -49,10 +64,16 @@ const Tasks: React.FC = () => {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-slate-950 text-slate-200 overflow-y-auto animate-in fade-in duration-500">
-      <header className="mb-8 flex justify-between items-start">
+      <header className="mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
         <div className="text-left">
-          <h1 className="text-3xl font-bold text-white mb-2 text-left">Metas RGP</h1>
-          <p className="text-slate-400 font-medium italic">"O que não é medido, não é gerido."</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Painel de Comando RGP</h1>
+          <div className="flex gap-2 mb-2">
+             {/* Botões de Perfil IA */}
+             <button onClick={() => applyAiFocus('sofia')} className="text-[9px] font-bold bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded hover:bg-blue-500/20 transition-all text-blue-400">SOFIA</button>
+             <button onClick={() => applyAiFocus('brenner')} className="text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded hover:bg-emerald-500/20 transition-all text-emerald-400">BRENNER</button>
+             <button onClick={() => applyAiFocus('dante')} className="text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 px-2 py-1 rounded hover:bg-purple-500/20 transition-all text-purple-400">DANTE</button>
+             <button onClick={() => applyAiFocus('rubens')} className="text-[9px] font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded hover:bg-amber-500/20 transition-all text-amber-400">RUBENS</button>
+          </div>
         </div>
         
         {tasks.some(t => t.completed) && (
@@ -63,21 +84,35 @@ const Tasks: React.FC = () => {
       </header>
 
       {/* Grid de Focos Editáveis */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {focos.map((foco, index) => (
-          <div key={foco.id} className={`p-4 bg-slate-900 border border-slate-800 border-l-4 ${foco.color} rounded-xl shadow-lg`}>
+          <div key={foco.id} className={`p-4 bg-slate-900 border border-slate-800 border-l-4 ${foco.color} rounded-xl shadow-lg transition-all hover:scale-[1.02]`}>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">FOCO 0{index + 1}</span>
-              <i className="fas fa-pen text-[9px] opacity-30"></i>
+              <i className="fas fa-bolt text-[9px] opacity-30"></i>
             </div>
             <input 
-              className="bg-transparent border-none focus:ring-0 w-full font-bold text-white p-0"
+              className="bg-transparent border-none focus:ring-0 w-full font-bold text-white p-0 text-sm"
               value={foco.title}
               onChange={(e) => updateFocus(foco.id, e.target.value)}
               spellCheck="false"
             />
           </div>
         ))}
+      </div>
+
+      {/* Barra de Progresso / Eficiência Operacional */}
+      <div className="mb-10 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <div className="flex justify-between items-center mb-2">
+           <span className="text-xs font-bold text-slate-400">EFICIÊNCIA OPERACIONAL RGP</span>
+           <span className="text-xs font-mono text-cyan-400">{progress}%</span>
+        </div>
+        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+           <div 
+             className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-700"
+             style={{ width: `${progress}%` }}
+           ></div>
+        </div>
       </div>
 
       {/* Input de Tarefas */}
@@ -87,23 +122,23 @@ const Tasks: React.FC = () => {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && addTask()}
-          placeholder="Digite a próxima ação estratégica..."
-          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none focus:border-cyan-500 text-white"
+          placeholder="O que Brenner, Sofia ou Dante fariam agora?"
+          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none focus:border-cyan-500 text-white placeholder:text-slate-600"
         />
-        <button onClick={addTask} className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 rounded-xl font-bold flex items-center gap-2">
+        <button onClick={addTask} className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 rounded-xl font-bold flex items-center gap-2 transition-all">
           <i className="fas fa-plus"></i> ADICIONAR
         </button>
       </div>
 
       {/* Lista de Tarefas */}
-      <div className="space-y-3">
+      <div className="space-y-3 pb-10">
         {tasks.map(task => (
           <div 
             key={task.id} 
             onClick={() => setTasks(tasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))}
-            className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer ${task.completed ? 'bg-slate-900/30 border-slate-800/50 opacity-50' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}
+            className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer ${task.completed ? 'bg-slate-900/30 border-slate-800/50 opacity-50' : 'bg-slate-900 border-slate-800 hover:border-slate-700 group'}`}
           >
-            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
+            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600 group-hover:border-cyan-500'}`}>
               {task.completed && <i className="fas fa-check text-[10px] text-white"></i>}
             </div>
             <span className={`flex-1 text-left font-medium ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>{task.text}</span>
