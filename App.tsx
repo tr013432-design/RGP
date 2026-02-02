@@ -8,46 +8,39 @@ import CalendarModule from './components/CalendarModule';
 import Tasks from './components/Tasks';
 
 function App() {
-  // Estado que controla qual tela está aparecendo
   const [activeModule, setActiveModule] = useState('sofia');
 
-  // Função que decide qual componente mostrar
+  // Centralizando os títulos para facilitar a manutenção
+  const titles: Record<string, string> = {
+    sofia: 'Sofia: Inteligência & Financeiro',
+    brenner: 'Brenner: Comercial & CRM',
+    dante: 'Dante: Copy & Estratégia',
+    rubens: 'Rubens: Creative Lab',
+    calendar: 'Agenda Executiva RGP',
+    tasks: 'Metas & Tarefas Diárias'
+  };
+
   const renderModule = () => {
     switch (activeModule) {
-      case 'sofia':
-        return <SofiaModule />;
-      case 'brenner':
-        return <BrennerModule />;
-      case 'dante':
-        return <DanteModule />;
-      case 'rubens':
-        return <RubensModule />;
-      case 'calendar':
-        return <CalendarModule />;
-      case 'tasks': // Agora o case está no lugar certo!
-        return <Tasks />;
-      default:
-        return <SofiaModule />;
+      case 'sofia': return <SofiaModule />;
+      case 'brenner': return <BrennerModule />;
+      case 'dante': return <DanteModule />;
+      case 'rubens': return <RubensModule />;
+      case 'calendar': return <CalendarModule />;
+      case 'tasks': return <Tasks />;
+      default: return <SofiaModule />;
     }
   };
 
   return (
     <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
-      {/* BARRA LATERAL (MENU) */}
       <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} />
 
-      {/* ÁREA PRINCIPAL (CONTEÚDO) */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
-        {/* Cabeçalho Fixo no Topo */}
         <header className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-              {activeModule === 'sofia' && 'Sofia: Inteligência & Financeiro'}
-              {activeModule === 'brenner' && 'Brenner: Comercial & CRM'}
-              {activeModule === 'dante' && 'Dante: Copy & Estratégia'}
-              {activeModule === 'rubens' && 'Rubens: Creative Lab'}
-              {activeModule === 'calendar' && 'Agenda Executiva RGP'}
-              {activeModule === 'tasks' && 'Metas & Tarefas Diárias'} 
+              {titles[activeModule] || 'RGP Growth'}
             </h1>
             <p className="text-xs text-slate-500 mt-1 text-left">Ecossistema Rodrigues Growth Partners</p>
           </div>
@@ -62,8 +55,8 @@ function App() {
           </div>
         </header>
 
-        {/* Onde os Módulos são renderizados */}
-        <div className="animate-in fade-in zoom-in duration-300">
+        {/* Container de transição */}
+        <div key={activeModule} className="animate-in fade-in zoom-in duration-300">
            {renderModule()}
         </div>
       </main>
