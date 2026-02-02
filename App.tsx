@@ -27,6 +27,9 @@ function App() {
         return <CalendarModule />;
       default:
         return <SofiaModule />;
+        switch (activeModule) {
+      case 'tasks':
+        return <Tasks />;
     }
   };
 
