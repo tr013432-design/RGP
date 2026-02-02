@@ -5,6 +5,7 @@ import BrennerModule from './components/BrennerModule';
 import DanteModule from './components/DanteModule';
 import RubensModule from './components/RubensModule';
 import CalendarModule from './components/CalendarModule';
+import Tasks from './components/Tasks';
 
 function App() {
   // Estado que controla qual tela está aparecendo
