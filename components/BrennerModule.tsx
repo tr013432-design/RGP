@@ -14,6 +14,8 @@ interface Lead {
   phone: string;
   location: string;
   source: string;
+  lostReason?: string;
+  lostAt?: string;
 }
 
 interface SavedScript {
@@ -22,6 +24,24 @@ interface SavedScript {
   content: string;
   date: string;
 }
+
+const COLUMNS = [
+  'PROSPECÇÃO',
+  'QUALIFICAÇÃO',
+  'PROPOSTA',
+  'FECHAMENTO',
+  'NÃO INTERESSADOS'
+] as const;
+
+const LOST_REASON_OPTIONS = [
+  'Sem interesse',
+  'Sem orçamento',
+  'Já possui fornecedor',
+  'Vai pensar depois',
+  'Momento inadequado',
+  'Não respondeu',
+  'Outros'
+];
 
 const BrennerModule: React.FC = () => {
   // --- 1. ESTADO DOS LEADS (SALVOS NO NAVEGADOR) ---
@@ -64,7 +84,9 @@ const BrennerModule: React.FC = () => {
     phone: '',
     location: '',
     source: '',
-    status: 'PROSPECÇÃO'
+    status: 'PROSPECÇÃO',
+    lostReason: '',
+    lostAt: ''
   });
 
   // IA States
@@ -72,23 +94,27 @@ const BrennerModule: React.FC = () => {
   const [scriptResponse, setScriptResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const COLUMNS = ['PROSPECÇÃO', 'QUALIFICAÇÃO', 'PROPOSTA', 'FECHAMENTO', 'NÃO INTERESSADOS'] as const;
-
   // --- CÁLCULOS KPI ---
   const stats = useMemo(() => {
     const activeLeads = leads.filter(l => l.status !== 'NÃO INTERESSADOS');
+    const lostLeads = leads.filter(l => l.status === 'NÃO INTERESSADOS');
+    const closedLeads = leads.filter(l => l.status === 'FECHAMENTO');
 
-    const closedValue = activeLeads
-      .filter(l => l.status === 'FECHAMENTO')
-      .reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+    const closedValue = closedLeads.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+    const totalPipeline = activeLeads.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
 
-    const totalPipeline = activeLeads
-      .reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+    const totalDecided = closedLeads.length + lostLeads.length;
+    const realConversionRate = totalDecided > 0 ? (closedLeads.length / totalDecided) * 100 : 0;
 
     return {
       total: totalPipeline,
       closed: closedValue,
-      goalProgress: (closedValue / 15000) * 100
+      goalProgress: (closedValue / 15000) * 100,
+      lostCount: lostLeads.length,
+      closedCount: closedLeads.length,
+      activeCount: activeLeads.length,
+      totalLeads: leads.length,
+      realConversionRate
     };
   }, [leads]);
 
@@ -104,14 +130,20 @@ const BrennerModule: React.FC = () => {
       phone: '',
       location: '',
       source: '',
-      status: column
+      status: column,
+      lostReason: '',
+      lostAt: column === 'NÃO INTERESSADOS' ? new Date().toISOString().split('T')[0] : ''
     });
     setIsModalOpen(true);
   };
 
   const openEditModal = (lead: Lead) => {
     setEditingLeadId(lead.id);
-    setFormData({ ...lead });
+    setFormData({
+      ...lead,
+      lostReason: lead.lostReason || '',
+      lostAt: lead.lostAt || ''
+    });
     setIsModalOpen(true);
   };
 
@@ -125,16 +157,30 @@ const BrennerModule: React.FC = () => {
 
     const safeValue = Number.isNaN(Number(formData.value)) ? 0 : Number(formData.value);
 
+    const normalizedLead: Lead = {
+      ...formData,
+      value: safeValue,
+      lostReason:
+        formData.status === 'NÃO INTERESSADOS'
+          ? formData.lostReason || 'Sem motivo informado'
+          : '',
+      lostAt:
+        formData.status === 'NÃO INTERESSADOS'
+          ? formData.lostAt || new Date().toISOString().split('T')[0]
+          : ''
+    };
+
     if (editingLeadId) {
-      setLeads(leads.map(lead => (
-        lead.id === editingLeadId
-          ? { ...formData, value: safeValue }
-          : lead
-      )));
+      setLeads(prev =>
+        prev.map(lead => (lead.id === editingLeadId ? normalizedLead : lead))
+      );
     } else {
-      setLeads([
-        ...leads,
-        { ...formData, id: Math.random().toString(36).substr(2, 9), value: safeValue }
+      setLeads(prev => [
+        ...prev,
+        {
+          ...normalizedLead,
+          id: Math.random().toString(36).substr(2, 9)
+        }
       ]);
     }
 
@@ -142,10 +188,32 @@ const BrennerModule: React.FC = () => {
   };
 
   const handleDeleteLead = () => {
-    if (confirm('Tem certeza que deseja excluir este lead?')) {
-      setLeads(leads.filter(l => l.id !== editingLeadId));
+    if (window.confirm('Tem certeza que deseja excluir este lead?')) {
+      setLeads(prev => prev.filter(l => l.id !== editingLeadId));
       setIsModalOpen(false);
     }
+  };
+
+  const markAsNotInterested = (leadId: string) => {
+    const typedReason = window.prompt(
+      'Motivo da perda / não interesse:\n\nEx.: Sem orçamento, já possui fornecedor, não respondeu...',
+      'Sem interesse'
+    );
+
+    if (typedReason === null) return;
+
+    setLeads(prev =>
+      prev.map(lead =>
+        lead.id === leadId
+          ? {
+              ...lead,
+              status: 'NÃO INTERESSADOS',
+              lostReason: typedReason.trim() || 'Sem interesse',
+              lostAt: new Date().toISOString().split('T')[0]
+            }
+          : lead
+      )
+    );
   };
 
   // --- DRAG AND DROP ---
@@ -159,14 +227,36 @@ const BrennerModule: React.FC = () => {
 
   const handleDrop = (e: React.DragEvent, targetStatus: Lead['status']) => {
     const leadId = e.dataTransfer.getData('leadId');
-    if (leadId) {
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: targetStatus } : l));
-    }
+
+    if (!leadId) return;
+
+    setLeads(prev =>
+      prev.map(l => {
+        if (l.id !== leadId) return l;
+
+        if (targetStatus === 'NÃO INTERESSADOS') {
+          return {
+            ...l,
+            status: targetStatus,
+            lostReason: l.lostReason || 'Movido para não interessados',
+            lostAt: l.lostAt || new Date().toISOString().split('T')[0]
+          };
+        }
+
+        return {
+          ...l,
+          status: targetStatus,
+          lostReason: '',
+          lostAt: ''
+        };
+      })
+    );
   };
 
   // --- IA FUNCTIONS ---
   const getScript = async () => {
     if (!objection) return;
+
     setIsLoading(true);
     try {
       const res = await handleSalesObjection(objection);
@@ -180,6 +270,7 @@ const BrennerModule: React.FC = () => {
 
   const handleSaveScript = () => {
     if (!scriptResponse) return;
+
     const title = window.prompt('Nome do Script:');
     if (title) {
       setSavedScripts([
@@ -201,25 +292,50 @@ const BrennerModule: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* 1. PLACAR DE METAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
           <p className="text-xs text-slate-400 font-bold uppercase">Pipeline Total</p>
           <p className="text-2xl font-mono text-white">R$ {stats.total.toLocaleString('pt-BR')}</p>
+          <p className="text-[11px] text-slate-500 mt-1">{stats.activeCount} leads ativos</p>
         </div>
 
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
           <p className="text-xs text-slate-400 font-bold uppercase text-emerald-500">Pix na Conta</p>
           <p className="text-2xl font-mono text-emerald-400">R$ {stats.closed.toLocaleString('pt-BR')}</p>
+          <p className="text-[11px] text-slate-500 mt-1">{stats.closedCount} fechados</p>
         </div>
 
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-          <p className="text-xs text-slate-400 font-bold uppercase">Meta 2026</p>
+          <p className="text-xs text-slate-400 font-bold uppercase text-red-400">Não Interessados</p>
+          <p className="text-2xl font-mono text-red-400">{stats.lostCount}</p>
+          <p className="text-[11px] text-slate-500 mt-1">leads perdidos</p>
+        </div>
+
+        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <p className="text-xs text-slate-400 font-bold uppercase">Conversão Real</p>
+          <p className="text-2xl font-mono text-cyan-400">{stats.realConversionRate.toFixed(1)}%</p>
           <div className="w-full bg-slate-800 h-2 mt-2 rounded-full overflow-hidden">
             <div
-              className="bg-emerald-500 h-full transition-all"
-              style={{ width: `${Math.min(stats.goalProgress, 100)}%` }}
+              className="bg-cyan-500 h-full transition-all"
+              style={{ width: `${Math.min(stats.realConversionRate, 100)}%` }}
             />
           </div>
+        </div>
+      </div>
+
+      {/* 1.1 META */}
+      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-slate-400 font-bold uppercase">Meta 2026</p>
+          <span className="text-xs text-slate-500">
+            {Math.min(stats.goalProgress, 100).toFixed(1)}%
+          </span>
+        </div>
+        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div
+            className="bg-emerald-500 h-full transition-all"
+            style={{ width: `${Math.min(stats.goalProgress, 100)}%` }}
+          />
         </div>
       </div>
 
@@ -263,15 +379,30 @@ const BrennerModule: React.FC = () => {
                       : 'border-slate-700 hover:border-emerald-500'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-1">
-                    <p className={`font-bold text-sm truncate pr-4 ${
-                      lead.status === 'NÃO INTERESSADOS'
-                        ? 'text-white group-hover:text-red-400'
-                        : 'text-white group-hover:text-emerald-400'
-                    }`}>
+                  {lead.status !== 'NÃO INTERESSADOS' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markAsNotInterested(lead.id);
+                      }}
+                      title="Marcar como não interessado"
+                      className="absolute top-2 right-2 text-[10px] px-2 py-1 rounded border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500 hover:text-white transition-all"
+                    >
+                      Não interessado
+                    </button>
+                  )}
+
+                  <div className="flex justify-between items-start mb-1 pr-24">
+                    <p
+                      className={`font-bold text-sm truncate pr-4 ${
+                        lead.status === 'NÃO INTERESSADOS'
+                          ? 'text-white group-hover:text-red-400'
+                          : 'text-white group-hover:text-emerald-400'
+                      }`}
+                    >
                       {lead.name}
                     </p>
-                    <i className="fas fa-pen text-[10px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                   </div>
 
                   {lead.company && (
@@ -291,14 +422,30 @@ const BrennerModule: React.FC = () => {
                         {lead.source}
                       </span>
                     )}
+
+                    {lead.status === 'NÃO INTERESSADOS' && lead.lostReason && (
+                      <span className="text-[9px] bg-red-900/20 text-red-300 px-1.5 py-0.5 rounded border border-red-900/30">
+                        {lead.lostReason}
+                      </span>
+                    )}
                   </div>
 
+                  {lead.status === 'NÃO INTERESSADOS' && lead.lostAt && (
+                    <p className="text-[10px] text-slate-500 mb-2">
+                      Perdido em: {new Date(lead.lostAt).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+
                   <div className="flex justify-between items-center border-t border-slate-700 pt-2 mt-2">
-                    <span className={`text-xs font-mono font-bold ${
-                      lead.status === 'NÃO INTERESSADOS' ? 'text-red-400' : 'text-emerald-400'
-                    }`}>
+                    <span
+                      className={`text-xs font-mono font-bold ${
+                        lead.status === 'NÃO INTERESSADOS' ? 'text-red-400' : 'text-emerald-400'
+                      }`}
+                    >
                       R$ {Number(lead.value).toLocaleString('pt-BR')}
                     </span>
+
+                    <i className="fas fa-pen text-[10px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                   </div>
                 </div>
               ))}
@@ -316,6 +463,29 @@ const BrennerModule: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* 2.1 RESUMO DO FUNIL */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <p className="text-xs uppercase font-bold text-slate-500 mb-1">Total de Leads</p>
+          <p className="text-xl font-bold text-white">{stats.totalLeads}</p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <p className="text-xs uppercase font-bold text-slate-500 mb-1">Ativos</p>
+          <p className="text-xl font-bold text-cyan-400">{stats.activeCount}</p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <p className="text-xs uppercase font-bold text-slate-500 mb-1">Fechados</p>
+          <p className="text-xl font-bold text-emerald-400">{stats.closedCount}</p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <p className="text-xs uppercase font-bold text-slate-500 mb-1">Perdidos</p>
+          <p className="text-xl font-bold text-red-400">{stats.lostCount}</p>
+        </div>
       </div>
 
       {/* 3. BRENNER SCRIPTS (IA) */}
@@ -383,7 +553,11 @@ const BrennerModule: React.FC = () => {
         </div>
 
         {/* SCRIPTS SALVOS (SIDEBAR) */}
-        <div className={`lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col ${showSavedScripts ? 'block' : 'hidden lg:flex'}`}>
+        <div
+          className={`lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col ${
+            showSavedScripts ? 'block' : 'hidden lg:flex'
+          }`}
+        >
           <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">
             <i className="fas fa-save"></i> Scripts Salvos
           </h4>
@@ -395,7 +569,10 @@ const BrennerModule: React.FC = () => {
               </p>
             ) : (
               savedScripts.map(s => (
-                <div key={s.id} className="bg-slate-950/50 p-3 rounded border border-slate-800 flex justify-between items-start group">
+                <div
+                  key={s.id}
+                  className="bg-slate-950/50 p-3 rounded border border-slate-800 flex justify-between items-start group"
+                >
                   <div
                     onClick={() => {
                       setScriptResponse(s.content);
@@ -451,7 +628,7 @@ const BrennerModule: React.FC = () => {
               </div>
             </div>
 
-            {/* Form Body - Scrollável */}
+            {/* Form Body */}
             <div className="p-6 overflow-y-auto custom-scrollbar">
               <form id="leadForm" onSubmit={handleSaveLead} className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="md:col-span-2">
@@ -461,7 +638,21 @@ const BrennerModule: React.FC = () => {
 
                   <select
                     value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as Lead['status'] })}
+                    onChange={e => {
+                      const nextStatus = e.target.value as Lead['status'];
+                      setFormData({
+                        ...formData,
+                        status: nextStatus,
+                        lostReason:
+                          nextStatus === 'NÃO INTERESSADOS'
+                            ? formData.lostReason || 'Sem interesse'
+                            : '',
+                        lostAt:
+                          nextStatus === 'NÃO INTERESSADOS'
+                            ? formData.lostAt || new Date().toISOString().split('T')[0]
+                            : ''
+                      });
+                    }}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none"
                   >
                     {COLUMNS.map(c => (
@@ -498,7 +689,7 @@ const BrennerModule: React.FC = () => {
                   />
                 </div>
 
-                {/* BLOCO 2: CONTATO & DADOS IMPORTANTES */}
+                {/* BLOCO 2: CONTATO & ORIGEM */}
                 <div className="md:col-span-2 border-b border-slate-800 pb-2 mb-2 mt-2">
                   <span className="text-xs text-emerald-500 font-bold uppercase">Contato & Origem</span>
                 </div>
@@ -559,14 +750,51 @@ const BrennerModule: React.FC = () => {
                   <input
                     type="number"
                     value={formData.value}
-                    onChange={e => setFormData({
-                      ...formData,
-                      value: e.target.value === '' ? 0 : parseFloat(e.target.value)
-                    })}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        value: e.target.value === '' ? 0 : parseFloat(e.target.value)
+                      })
+                    }
                     className="w-full bg-transparent border-b border-emerald-500 text-xl font-bold text-white focus:outline-none placeholder-emerald-700"
                     placeholder="0.00"
                   />
                 </div>
+
+                {/* BLOCO 4: PERDA */}
+                {formData.status === 'NÃO INTERESSADOS' && (
+                  <>
+                    <div className="md:col-span-2 border-b border-red-900/30 pb-2 mb-2 mt-2">
+                      <span className="text-xs text-red-400 font-bold uppercase">Motivo da Perda</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Motivo</label>
+                      <select
+                        value={formData.lostReason || ''}
+                        onChange={e => setFormData({ ...formData, lostReason: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-red-500 outline-none"
+                      >
+                        <option value="">Selecione...</option>
+                        {LOST_REASON_OPTIONS.map(reason => (
+                          <option key={reason} value={reason}>
+                            {reason}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Data da perda</label>
+                      <input
+                        type="date"
+                        value={formData.lostAt || ''}
+                        onChange={e => setFormData({ ...formData, lostAt: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-red-500 outline-none"
+                      />
+                    </div>
+                  </>
+                )}
               </form>
             </div>
 
